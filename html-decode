@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# This script is not HTML dedicated, but that's what it'll be used for most,
+# so it's named to be most easily remembered. It's just a way to decode a
+# compressed input stream from within a shell (script) when the stream's
+# compression type, if any, is unknown.
+
+for e in base64 brotli gunzip head xxd
+do
+    if ! which $e &>/dev/null
+    then
+        echo -e "\nDidn't find $e which ${0##*/} needs. Exiting.\n" >&2
+        exit 1
+    fi
+done
+
+cmprssdStrm=$( cat - | base64 )        # Storing raw binary in shell variables
+                                       # does not go well, so base64 encode it.
+
+# Gzip streams start with hex string '1f8b', which in base64 is '4834734941'.
+if [ 4834734941 = $( head --bytes 5 <<< "$cmprssdStrm" | xxd -p ) ]
+then
+    base64 -d <<< "$cmprssdStrm" | gunzip 2>/dev/null
+
+else
+    # brotli encodings do not appear to start with magic bytes (file sig).
+
+    for dcdr in "brotli -d" cat             # cat last for uncompressed inputs.
+    do
+        base64 -d <<< "$cmprssdStrm" | $dcdr 2>/dev/null
+        [ 0 = $? ] && break
+    done
+fi
+
