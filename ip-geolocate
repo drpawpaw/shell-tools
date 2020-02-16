@@ -27,7 +27,7 @@
 # it's likely a good idea to use it (i.e. make sure it's on the shell's PATH).
 
 # The only text output by this script to stdout is the sumitted IP's
-# geolocation info. All other outputs are only to stderr.
+# geolocation info. All other outputs are to stderr.
 
 #declare -r geolocaterUrl='https://whatismyipaddress.com/'
 #declare -r geolocaterUrl='https://www.whatismyip.com/'
@@ -82,7 +82,11 @@ fi
 
 if [ -z "$curlProxy" ]
 then
-    if [ -n "$https_proxy" ]
+    if [ -n "$HTTPS_PROXY" ]
+    then
+        curlProxy="--proxy $HTTPS_PROXY"
+
+    elif [ -n "$https_proxy" ]
     then
         curlProxy="--proxy $https_proxy"
 
@@ -98,8 +102,9 @@ fi
 # This script passes the web proxy address to
 # eval so verifying its format is essential.
 if [ -n "$curlProxy" ] && \
-                   ! sed -r 's/^--proxy  *//' <<< "$curlProxy" | \
-                grep -E '^https?://[-.0-9a-zA-Z]+(:([0-9]){1,5})?$' &>/dev/null
+          ! sed -r 's/^--proxy  *//' <<< "$curlProxy" | \
+          grep -E '^(https?|socks(4|5)a?)://[-.0-9a-zA-Z]+(:[0-9]{1,5})?$' | \
+                                                                    &>/dev/null
 then
     printUsageAndExit
 fi
