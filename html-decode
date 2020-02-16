@@ -1,5 +1,21 @@
 #!/bin/bash
 
+# Copyright (C) 2020 drpawpaw. All Rights Reserved.
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
 # This script is not HTML dedicated, but that's what it'll be used for most,
 # so it's named to be most easily remembered. It's just a way to decode a
 # compressed input stream from within a shell (script) when the stream's
@@ -14,8 +30,11 @@ do
     fi
 done
 
-cmprssdStrm=$( cat - | base64 )        # Storing raw binary in shell variables
-                                       # does not go well, so base64 encode it.
+#https://unix.stackexchange.com/questions/482431/bash-use-raw-binary-in-variable-as-executable
+#https://stackoverflow.com/questions/43214001/how-to-write-binary-data-in-bash
+
+cmprssdStrm=$( cat - | base64 )   # Storing raw binary in shell variables often
+                                  # does not go well, so base64 encode it.
 
 # Gzip streams start with hex string '1f8b', which in base64 is '4834734941'.
 if [ 4834734941 = $( head --bytes 5 <<< "$cmprssdStrm" | xxd -p ) ]

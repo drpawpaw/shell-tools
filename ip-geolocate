@@ -1,0 +1,125 @@
+#!/bin/bash
+
+# Copyright (C) 2020 drpawpaw. All Rights Reserved.
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+# https://ipinfo.io/ip        # Replies with just the string of your public IP.
+
+# Sending many requests rapidly causes some geolocate sites to stop responding.
+
+# If curl sends its default HTTP request headers, some of the geolocator sites
+# do not reply with the info desired. whatismyip.live, for example, is one that
+# seems to behave this way. So while this script checks for script
+# 'http-req-headers' before calling it, and runs whether finding it or not,
+# it's likely a good idea to use it (i.e. make sure it's on the shell's PATH).
+
+# The only text output by this script to stdout is the request geolocation
+# info. All other outputs are only to stderr.
+
+#declare -r geolocaterUrl='https://whatismyipaddress.com/'
+#declare -r geolocaterUrl='https://www.whatismyip.com/'
+#declare -r geolocaterUrl='https://www.iplocation.net/find-ip-address'
+
+# These provide IP on first page without JS enabled:
+#declare -r geolocaterUrl='https://www.myip.com/'
+
+declare -r geolocaterUrl='https://whatismyip.live/ip'
+
+
+for e in curl cut grep html-decode sed
+do
+    if ! which "$e" &>/dev/null
+    then
+        echo -e "\n${0##*/} needs ${e}. Didn't find it. Exiting.\n" >&2
+        echo -e "\nRead top of ${0##*/} for useful use info.\n" >&2
+        exit 1
+    fi
+done
+
+
+function printUsageAndExit
+{
+    echo -e "\nUsage: $ ${0##*/}" \
+                      "[-p 'https?://{web proxy:port}'] {IP to geolocate}" >&2
+    exit 1
+}
+
+
+curlProxy=""
+
+while getopts ":p:" arg
+do
+    case $arg in
+
+        p  ) curlProxy="--proxy $OPTARG" ;;
+
+        \? ) printUsageAndExit ; exit 1 ;;
+    esac
+done
+[ -n "$curlProxy" ] && shift 2
+
+
+                  # This script passes lookup IP to eval
+                  # so verifying its format is essential.
+if [ -z "$1" ] || ! grep -E '^([0-9]+\.){3}[0-9]+$' <<< "$1" &>/dev/null
+then
+    printUsageAndExit
+fi
+
+
+if [ -z "$curlProxy" ]
+then
+    if [ -n "$https_proxy" ]
+    then
+        curlProxy="--proxy $https_proxy"
+
+    elif [ -n "$http_proxy" ]
+    then
+        curlProxy="--proxy $http_proxy"
+    else
+        echo "NOTE: No web proxy set for ${0##*/}." >&2
+    fi
+fi
+
+
+# This script passes the web proxy address to
+# eval so verifying its format is essential.
+if [ -n "$curlProxy" ] && \
+                   ! sed -r 's/^--proxy  *//' <<< "$curlProxy" | \
+                grep -E '^https?://[-.0-9a-zA-Z]+(:([0-9]){1,5})?$' &>/dev/null
+then
+    printUsageAndExit
+fi
+
+
+randomHttpHeaders=""
+if which http-req-headers &>/dev/null
+then
+    . http-req-headers &>/dev/null                              # Yes, source.
+    randomHttpHeaders=$( setCurlHeadersInPseudoRandomOrder )
+else
+    echo "NOTE: ${0##*/} using standard curl HTTP request headers." >&2
+fi
+
+# grep regex is dependent on value of geolocateUrl, and
+# is currently assumed to be https://whatismyip.live/ip
+
+eval curl -sLX GET $randomHttpHeaders $curlProxy "$geolocaterUrl/$1" | \
+          html-decode | \
+          grep -m 1 -E 'meta +name="twitter:description" +' | \
+          cut -d '"' -f4 | \
+          sed -r 's/ *IP +location:? *//'
+
