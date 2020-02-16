@@ -26,8 +26,8 @@
 # 'http-req-headers' before calling it, and runs whether finding it or not,
 # it's likely a good idea to use it (i.e. make sure it's on the shell's PATH).
 
-# The only text output by this script to stdout is the request geolocation
-# info. All other outputs are only to stderr.
+# The only text output by this script to stdout is the sumitted IP's
+# geolocation info. All other outputs are only to stderr.
 
 #declare -r geolocaterUrl='https://whatismyipaddress.com/'
 #declare -r geolocaterUrl='https://www.whatismyip.com/'
