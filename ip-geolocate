@@ -39,7 +39,7 @@
 declare -r geolocaterUrl='https://whatismyip.live/ip'
 
 
-for e in curl cut grep html-decode sed
+for e in curl cut grep html-uncompress sed
 do
     if ! which "$e" &>/dev/null
     then
@@ -123,7 +123,7 @@ fi
 # is currently assumed to be https://whatismyip.live/ip
 
 eval curl -sLX GET $randomHttpHeaders $curlProxy "$geolocaterUrl/$1" | \
-          html-decode | \
+          html-uncompress | \
           grep -m 1 -E 'meta +name="twitter:description" +' | \
           cut -d '"' -f4 | \
           sed -r 's/ *IP +location:? *//'
