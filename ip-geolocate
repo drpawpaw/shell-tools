@@ -122,7 +122,8 @@ fi
 # grep regex is dependent on value of geolocateUrl, and
 # is currently assumed to be https://whatismyip.live/ip
 
-eval curl -sLX GET $randomHttpHeaders $curlProxy "$geolocaterUrl/$1" | \
+eval curl -sLX GET $randomHttpHeaders $curlProxy \
+                   --max-time 10 "$geolocaterUrl/$1" | \
           html-uncompress | \
           grep -m 1 -E 'meta +name="twitter:description" +' | \
           cut -d '"' -f4 | \
