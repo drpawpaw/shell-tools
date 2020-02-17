@@ -1,0 +1,45 @@
+#!/bin/bash
+
+# Copyright (C) 2020 drpawpaw. All Rights Reserved.
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+# Makes a backup copy of a file with a name suffixed with the current time.
+# User must have read access to the file and write access to its dir.
+
+if [ ! -f "$1" ] || [ ! -r "$1" ]
+then
+    echo -e "\nUsage: $ ${0##*/} {readable file}\n" >&2
+    exit 1
+fi
+
+if grep -E '/' <<< "$1" &>/dev/null
+then
+    folder=${1%/*}
+else
+    folder='.'
+fi
+
+if [ ! -d "$folder" ] || [ ! -w "$folder" ]
+then
+    echo -e "\nUsage: $ ${0##*/} {readable file in writable dir}\n" >&2
+    exit 1
+fi
+
+original=${1##*/}
+
+cp -vp "$folder/$original" \
+       "$folder/$original."$( date +%F_%T | tr ':' '.' )'.bak' >&2
+
