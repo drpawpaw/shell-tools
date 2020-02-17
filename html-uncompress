@@ -28,7 +28,7 @@
 # It's not coded for extremely large inputs.
 
 
-for e in base64 brotli gunzip head xxd
+for e in base64 brotli gunzip head
 do
     if ! which $e &>/dev/null
     then
@@ -44,8 +44,8 @@ done
 
 cmprssdStrm=$( cat - | base64 )     # Do not store raw bytes in bash variables.
 
-# Gzip streams start with hex string '1f8b', which in base64 is '4834734941'.
-if [ 4834734941 = $( head --bytes 5 <<< "$cmprssdStrm" | xxd -p ) ]
+# Gzip streams start with hex string '1f8b', which in base64 is 'H4sIA'.
+if [ H4sIA = $( head --bytes 5 <<< "$cmprssdStrm" ) ]
 then
     base64 -d <<< "$cmprssdStrm" | gunzip 2>/dev/null
 else
