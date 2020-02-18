@@ -1,0 +1,130 @@
+#!/bin/bash
+
+# Copyright (C) 2020 drpawpaw. All Rights Reserved.
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+# This sciprt is very simple minded. It will likey produce a list of
+# executable dependencies of the analyzed script file (its required and only
+# command line arg) that is too large. Search the analyzed script, or use
+# your knowledge of it, to determine which of the questionable results are
+# false positives.
+#
+# It can also miss executable dependencies. E.G. It might miss some which are
+# constructed as strings during runtime and then executed with eval.
+#
+# PATH values vary from user to user. Thus, this scipt can produce different
+# dependencies lists when run under different users on the same script. For
+# each user that all or part of an analyzed script runs under, pass it into
+# this script running as that user.
+#
+# Only the line of dependencies printed just below the progress dots is sent
+# to stdout. All other outputs of this script are on stderr.
+
+
+if [ ! -f "$1" ] || [ ! -r "$1" ]
+then
+    echo -e "\n'$1' must be a regular readable file. Exiting.\n"
+    exit 1
+fi
+
+
+# This for loop's text was printed to stderr by this script when run on itself.
+for e in grep sed sort tr
+do
+    if ! which $e &>/dev/null
+    then
+        echo -e  "\n${0##*/} needs ${e}. Didnt find it. Exiting.\n" >&2
+        exit 1
+    fi
+done
+
+
+dependencies=''
+function addTokenToDependencies
+{
+    [ -z "$token" ] && return
+
+    [[ "$token" =~ (^|\/)bash$ ]] && return
+    [[ $token =~ ^(echo|true|false|more|which)$ ]] && return
+
+    # For any of these variables that occur within a
+    # possible path name, substitute their current value.
+    for v in HOME USER UID HOSTNAME JAVA_HOME LOGNAME PWD SHELL TERM
+    do
+        if [[ $token =~ .*$v.* ]]  # Attempt substitution only if
+                                   # token contains v's base.
+        then
+            v2=$( eval echo "\$$v" )
+            token=$( sed -r "s|\\\$$v(/\|$)|$v2\\1|g" <<< "$token" )
+        fi
+    done
+
+    if  which "$token" &>/dev/null
+    then
+        dependencies="$dependencies $token"
+        echo -n '.' >&2
+    fi
+    token=''
+}
+
+
+IFS=$'\n'
+token=''
+LN=''
+c=''
+while read -r LN
+do
+    # Lex line by line instead of char by char because 'read -rn 1' strips
+    # all newlines and turns space chars into the null/empty char.
+    for c in $( echo "$LN" | sed -r 's|(.)|\1\n|g' )
+    do
+        if echo "$c" | grep -E '[-_$@/[:alnum:]]' &>/dev/null
+        then
+            token="$token$c"
+        else
+            addTokenToDependencies
+        fi
+    done
+
+    addTokenToDependencies
+
+done < "$1"
+
+echo >&2
+dependencies=$( echo "$dependencies" | tr ' ' '\n' |
+                sort -u | tr '\n' ' ' | sed -r 's|^ *||')
+
+
+echo -e "\n$dependencies\n"
+
+
+echo "for e in $dependencies
+do
+    if ! which \$e &>/dev/null
+    then
+        echo -e \"\n\${0##*/} needs \${e}. Didnt find it. Exiting.\n\" >&2
+        exit 1
+    fi
+done" >&2
+
+
+if [ 0 != "$UID" ] && [[ $dependencies =~ ' 'su(do)?( |$) ]]
+then
+    echo -e "\n'${1##*/}' seems to possibly have a dependency on 'su' or" \
+            "'sudo'. If so it might be good to pass it to this script" \
+            "running under one of them.\n" >&2
+fi
+
