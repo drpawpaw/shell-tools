@@ -89,6 +89,9 @@ while read -r LN
 do
     # Lex line by line instead of char by char because 'read -rn 1' strips
     # all newlines and turns space chars into the null/empty char.
+
+    LN=$( sed -r 's/ *#.*$//' <<< "$LN" )
+
     for c in $( echo "$LN" | sed -r 's|(.)|\1\n|g' )
     do
         if echo "$c" | grep -E '[-_$@/[:alnum:]]' &>/dev/null
