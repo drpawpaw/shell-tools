@@ -118,7 +118,7 @@ echo "for e in $dependencies
 do
     if ! which \$e &>/dev/null
     then
-        echo -e \"\n\${0##*/} needs \${e}. Didnt find it. Exiting.\n\" >&2
+        echo -e \"\n\${0##*/} needs \${e}. Didn't find it. Exiting.\n\" >&2
         exit 1
     fi
 done" >&2
