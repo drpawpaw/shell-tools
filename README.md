@@ -14,3 +14,8 @@ html-decode: Uncompresses its input stream when the stream's compression type
 ip-geolocate: Prints the city (region) and country in which its IP address arg
               is located.
 
+iptbls-open-port: Opens a port in the local iptables firewall, either for
+                  outbound or inbound packets.
+
+iptbls-ssh-out-shell: SSH-specific wrapper around iptbls-open-port.
+

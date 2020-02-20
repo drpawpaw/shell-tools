@@ -1,0 +1,262 @@
+#!/bin/bash
+
+# Copyright (C) 2020 drpawpaw. All Rights Reserved.
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+# Opens a port in the local iptables firewall, either for outbound or inbound
+# packets. If the direction (-d) is outbound it also restricts the outbound
+# traffic to only packets sent by processes owned by the SUDO_USER caller of
+# this script.
+
+# Optionally takes a remote host param (-h) to restrict the destination or
+# source of packets through the opened port.
+
+# Run the script without params for a basic usage message, and see the 'while
+# getopts' loop just below for short descriptions of each param.
+
+# The close action of this script is intended only to close ports previously
+# opened by it. To be sure it's run when finished using the opened port, pass
+# in -s to the open call. -s causes this script to start an interactive shell
+# after opening the port, and then to close the port after the shell exits.
+# The shell's window title and cmd prompt are named/formatted to make it clear
+# that you're in a shell started by this script, and which port was opened.
+
+# Calls to close a port previously opened by this script must pass in the
+# exact same parameters that were passed to the open call (with the excption
+# of -s, which only makes sense for open calls, but passing -s into a close
+# call is safe--it's just ignored).
+
+# TODO: Add an optional -u param that causes the creation of a randomnly named
+# temporary user as the user allowed to make outbound requests. Passing in -u
+# will imply -s. The temp user's initial PWD will be its temporary HOME. This
+# HOME will be deleted along with the temp user when the -s shell exits.
+
+
+if [ 0 != $(id -u) ] || [ -z "$SUDO_USER" ]
+then
+    echo -e "\n${0##*/} only runs as sudo root.\n"
+    exit 1
+fi
+
+
+function printUsageAndExit
+{
+    echo -e "\nUsage: $ ${0##*/} -a {o|c} [-s]" \
+                       "-d {o|i} -p {u|t} -i {port #} [-h {host}]" >&2
+    exit 1
+}
+
+
+for e in grep host iptables mktemp rm ssh-agent sudo
+do
+    if ! which $e &>/dev/null
+    then
+        echo -e "\n${0##*/} needs ${e}. Didn't find it. Exiting.\n" >&2
+        exit 1
+    fi
+done
+
+
+startBash=false
+
+while getopts ":a:sd:p:n:h:" arg
+do
+    case $arg in
+
+        a  ) declare -r action=$OPTARG ;;         # Action: open or close port?
+
+        s  ) startBash=true ;;         # Start a bash shell after opening port,
+                                       # then close port when shell is exited.
+
+        d  ) declare -r direction=$OPTARG ;;     # Enable incoming or outgoing?
+
+        p  ) proto=$OPTARG ;;                             # TCP or UDP traffic?
+
+        n  ) declare -r port=$OPTARG ;;
+
+        h  ) declare -r host="$OPTARG" ;;       # Open to just one remote host?
+
+        \? ) printUsageAndExit
+             exit 1 ;;
+    esac
+done
+
+[ o != "$action" ] && [ c != "$action" ] && printUsageAndExit
+
+[ o != "$direction" ] && [ i != "$direction" ] && printUsageAndExit
+
+[ u != "$proto" ] && [ t != "$proto" ] && printUsageAndExit
+
+(( 1 > port )) || (( 65535 < port )) && printUsageAndExit
+
+
+if [ t = "$proto" ]
+then
+    proto=tcp
+else
+    proto=udp
+fi
+
+
+function closePort
+{
+    # Unlike openPort, attempt all rule delete calls, even if some fail.
+
+    if [ o = "$direction" ]
+    then
+        dest=""
+        [ -n "$host" ] && dest="-d $host"
+
+        set -o xtrace
+        iptables -D OUTPUT   -p $proto $dest --dport $port -j OUT_LOG \
+                             -m owner --uid-owner $( id -u $SUDO_USER ) \
+                             -m comment --comment "$SUDO_USER to $port"
+
+        iptables -D OUTPUT   -p $proto $dest --dport $port -j ACCEPT \
+                             -m state --state ESTABLISHED,RELATED \
+                             -m owner --uid-owner $( id -u $SUDO_USER ) \
+                             -m comment --comment "$SUDO_USER to $port"
+        set +o xtrace
+
+        src=""
+        [ -n "$host" ] && src="-s $host"
+
+        set -o xtrace
+        iptables -D INPUT   -p $proto $src --sport $port -j ACCEPT \
+                            -m state --state ESTABLISHED,RELATED \
+                            -m comment --comment "port $port convos"
+        set +o xtrace
+
+    elif [ i = "$direction" ]
+    then
+
+        src=""
+        [ -n "$host" ] && src="-s $host"
+
+        set -o xtrace
+        iptables -D INPUT   -p $proto $src --dport $port -j IN_LOG \
+                            -m comment --comment "new to $port"
+
+        iptables -D INPUT   -p $proto $src --dport $port -j ACCEPT \
+                            -m state --state ESTABLISHED,RELATED \
+                            -m comment --comment "port $port convos"
+        set +o xtrace
+
+        dest=""
+        [ -n "$host" ] && dest="-d $host"
+
+        set -o xtrace
+        iptables -D OUTPUT   -p $proto --sport $port $dest -j ACCEPT \
+                             -m state --state ESTABLISHED,RELATED \
+                             -m comment --comment "port $port convos"
+        set +o xtrace
+
+    else
+        echo -e "\nUnknown direction: $direction\n"
+        exit 1
+    fi
+}
+
+
+function openPort
+{
+    set -e     # Fail fast if any iptables rule create fails.
+
+    if [ o = "$direction" ]
+    then
+        dest=""
+        [ -n "$host" ] && dest="-d $host"
+
+        set -o xtrace
+        iptables -I OUTPUT 1 -p $proto $dest --dport $port -j OUT_LOG \
+                             -m owner --uid-owner $( id -u $SUDO_USER ) \
+                             -m comment --comment "$SUDO_USER to $port"
+
+        iptables -I OUTPUT 1 -p $proto $dest --dport $port -j ACCEPT \
+                             -m state --state ESTABLISHED,RELATED \
+                             -m owner --uid-owner $( id -u $SUDO_USER ) \
+                             -m comment --comment "$SUDO_USER to $port"
+        set +o xtrace
+
+        src=""
+        [ -n "$host" ] && src="-s $host"
+
+        set -o xtrace
+        iptables -I INPUT 1 -p $proto $src --sport $port -j ACCEPT \
+                            -m state --state ESTABLISHED,RELATED \
+                            -m comment --comment "port $port convos"
+        set +o xtrace
+
+    elif [ i = "$direction" ]
+    then
+
+        src=""
+        [ -n "$host" ] && src="-s $host"
+
+        set -o xtrace
+        iptables -I INPUT 1 -p $proto $src --dport $port -j IN_LOG \
+                            -m comment --comment "new to $port"
+
+        iptables -I INPUT 1 -p $proto $src --dport $port -j ACCEPT \
+                            -m state --state ESTABLISHED,RELATED \
+                            -m comment --comment "port $port convos"
+        set +o xtrace
+
+        dest=""
+        [ -n "$host" ] && dest="-d $host"
+
+        set -o xtrace
+        iptables -I OUTPUT 1 -p $proto --sport $port $dest -j ACCEPT \
+                             -m state --state ESTABLISHED,RELATED \
+                             -m comment --comment "port $port convos"
+        set +o xtrace
+
+    else
+        echo -e "\nUnknown direction: $direction\n"
+        exit 1
+    fi
+
+    set +e
+}
+
+
+if [ o = "$action" ]
+then
+    openPort
+
+    if $startBash
+    then
+        TF=$( sudo -u $SUDO_USER mktemp )
+        echo ". ~/.bashrc" > "$TF"
+        echo "PS1='\n$SUDO_USER ${0##*/} \$( pwd )\n$port> '" >> "$TF"
+        echo "echo -e '\033]2;'$port ${0##*/}'\007'"          >> "$TF"
+        echo "cd $PWD"                                        >> "$TF"
+        echo "env | grep SSH"                                 >> "$TF"
+
+        sudo -iu $SUDO_USER ssh-agent bash --rcfile "$TF"
+        rm -f "$TF"
+        echo -e "\nClosing port $port:"
+        closePort
+    fi
+
+elif [ c = "$action" ]
+then
+    closePort
+else
+    echo -e "\nUnknown action: $action\n"
+    exit 1
+fi
+
