@@ -11,6 +11,9 @@ execute-dependencies: Accepts the file name of a shell script and prints to
 html-decode: Uncompresses its input stream when the stream's compression type
              is unknown, including not compressed streams.
 
+http-req-headers: Provides a local web browser's standard request headers, for
+                  use with tools like cat, wget and lwp-request (GET).
+
 ip-geolocate: Prints the city (region) and country in which its IP address arg
               is located.
 

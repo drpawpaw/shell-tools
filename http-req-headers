@@ -1,0 +1,336 @@
+#!/bin/bash
+
+
+# Provides a local web browser's standard request headers, for use with tools
+# like cat, wget and lwp-request (GET). It avoids the need to hard code HTTP
+# request headers or remember to periodically revist their values.
+#
+# * Very chromium centric.
+#
+# * Currently depends on having a display.
+#
+# * Designed to be sourced or executed. When executed, capture its stdout for
+#   the browser's request headers, one per line. Sourcing repeatedly from the
+#   same runtime context is safe, and will only print the browser headers to
+#   stdout the first time.
+#
+# * When sourced the browser's headers are available in var HTTP_HEADERS as new
+#   line delimited strings. Access them with new lines active with
+#   'echo -e $HTTP_HEADERS'.
+#
+# * When sourced, use methods like setCurlHeadersInPseudoRandomOrder, capturing
+#   stdout, for a line of curl cmd-line-formatted HTTP headers in a "random"
+#   order. See method's comments for "randomness" reason. curl often needs (or
+#   at least is most easily) run from eval when using these formatted headers.
+#
+# * When calling methods like setCurlHeadersInPseudoRandomOrder, pass in the
+#   case-sensitive exact names of HTTP request headers (excluding ':' suffix)
+#   to be excluded from its return value, if any. Do this each time the
+#   method's called.
+#
+# * setCurlHeadersInPseudoRandomOrder default behavior is to return a different
+#   (random) User-Agent value each time it's called. To force it instead to
+#   return the same value for User-Agent with each call, use it something like
+#   this:
+#
+#       . http-req-headers &>/dev/null
+#       ua=$( randomUserAgentStringValue )
+#       [loop]
+#           reqHeads=$( setCurlHeadersInPseudoRandomOrder -u "$ua" )
+#           eval curl ... $reqHeads ...
+#       [end loop]
+#
+# * The 'GET' and 'Host' HTTP request headers are never included in those
+#   produced by this script.
+#
+# * It only pulls headers from the browser once per day. All other same-day
+#   calls of this script pull headers from file
+#
+#       $HOME/.[first token of browser var]-http-req-heads
+#
+# * In addition to when the browser's headers file is older than 24 hours,
+#   each time the script finds it DNE or empty it re-populates it. Thus,
+#   'cat /dev/null' or delete it to force this script to refresh HTTP headers
+#   from the browser.
+
+
+for e in cat chromium cut date grep mktemp ncat ps sed shuf ss tr wc
+do
+    if ! which $e &>/dev/null
+    then
+        echo -e "\n${0##*/} needs ${e}. Didn't find it. Exiting.\n" >&2
+        exit 1
+    fi
+done
+
+
+browser=chromium
+
+# https://developers.whatismybrowser.com/useragents/explore/
+userAgentStrings="$HOME/bin/config/http-user-agent-strings.txt"
+
+if [ ! -f "$userAgentStrings" ] || [ ! -r "$userAgentStrings" ]
+then
+    echo -e "\nCan't read file '$userAgentStrings'. Exiting.\n" >&2
+    exit 1
+fi
+
+
+httpReqHeadsFile="$HOME/.$( echo "$browser"  |
+                            sed -r 's|^ *||' |
+                            cut -d ' ' -f1 )-http-req-heads"
+
+[ ! -f "$httpReqHeadsFile" ] && touch "$httpReqHeadsFile"
+
+if [ ! -r "$httpReqHeadsFile" ] || [ ! -w "$httpReqHeadsFile" ]
+then
+    echo -e "\nCan't access '$httpReqHeadsFile'. Exiting.\n" >&2
+    exit 1
+fi
+
+
+# https://developers.whatismybrowser.com/useragents/explore/
+if [ function != "$( type -t randomUserAgentStringValue )" ]
+then
+    function randomUserAgentStringValue
+    {
+        local userAgent=$( shuf -n 1 "$userAgentStrings" )
+        if [ -z "$userAgent" ]
+        then
+            echo -e "\nFailed to determine a User-Agent value. Exiting.\n" >&2
+            exit 1
+        fi
+        echo "$userAgent"
+    }
+    export -f randomUserAgentStringValue
+fi
+
+
+# Call setCurlHeadersInPseudoRandomOrder as part of setting up each HTTP
+# request that uses the HTTP_HEADERS string produced by this script. Chrome
+# sends its basic/standard HTTP request headers in (what what apperas to be) a
+# random order for each request. This function mimics that behavior.
+#
+# Note: One context in which Chrome always returns its default HTTP req headers
+# in a specific and predictable order is the first GET request it makes after
+# starting. It's each subsequent request it makes that orders them "randomly".
+#
+# User-Agent for the web proxy is also set by this method.
+#
+# TODO: Study the ordering of Chrome HTTP request headers over a series of
+#       requests to determine if there's a pattern. If so, update this method
+#       to mimic it.
+if [ function != "$( type -t setCurlHeadersInPseudoRandomOrder )" ]
+then
+    function setCurlHeadersInPseudoRandomOrder
+    {
+        local exculed=""
+        local userAgent=""
+
+        while getopts ":u:e:" arg
+        do
+            case $arg in
+
+                u  ) userAgent="$OPTARG" ;;
+
+                e  ) [ -n "$exculed" ] && exculed="${exculed}|"
+                     exculed="$exculed$OPTARG" ;;
+
+                \? ) echo "Usage: $ ${0##*/}" \
+                          "[-u userAgent] [-e HTTP req header to exclued]..."
+                     exit 1 ;;
+            esac
+        done
+
+        [ -z "$userAgent" ] && userAgent=$( randomUserAgentStringValue )
+        if [ -z "$userAgent" ]
+        then
+            echo -e "\nFailed to set HTTP User-Agent value. Exiting." >&2
+            exit 1
+        fi
+
+        # Either curl or the web proxy end up sending the User-Agent string
+        # twice if curl's proxy-header cmd line arg is used. Don't use it.
+        local hdr=""
+        local headers=""
+        local ua=""
+        declare IFS=$'\n'
+        for hdr in $( echo -e $HTTP_HEADERS | shuf )
+        do
+            if echo "$hdr" | grep -vE "^($exculed): " &>/dev/null
+            then
+                if echo "$hdr" | grep -E '^[Uu]ser-[Aa]gent: ' &>/dev/null
+                then
+                    ua="$( echo "$hdr" |
+                                 grep -Eo '^[Uu]ser-[Aa]gent: ' )$userAgent"
+                    headers="$headers -H '$ua'"
+                else
+                    headers="$headers -H '$hdr'"
+                fi
+            fi
+        done
+        echo "$headers"
+    }
+    export -f setCurlHeadersInPseudoRandomOrder
+fi
+
+
+# If true, then HTTP_HEADERS has already been populated, so no need
+# to do anything else. This script can be sourced or executed.
+if [ -n "$HTTP_HEADERS" ]
+then
+    # This script can be sourced or executed. Trying to put the
+    # return and exit in the same expression mostly creates heartache.
+    return &>/dev/null
+    exit
+fi
+
+
+export HTTP_HEADERS=""
+
+
+if [ function != "$( type -t setHttpOutgoingRequestHeaders )" ]
+then
+    function setHttpOutgoingRequestHeaders
+    {
+        local IFS=$'\n'
+        local L
+        declare -i I=0
+
+        for L in $( < "$httpReqHeadsFile" )
+        do
+            if [ -n "$L" ] && echo "$L" | grep -vE "^(GET|Host):? " &>/dev/null
+            then
+                L=$( echo "$L" | tr -d '\r' )
+                [ -z "$L" ] && continue
+
+                # SDCH compression was removed from Chrome in version 59, so
+                # even if it's available in the browser/version we're
+                # imitating, we don't use it:
+                L=$( echo "$L" | sed -r 's/ +sdch,?//g' )
+                HTTP_HEADERS="$HTTP_HEADERS$L\n"
+                echo "$L"
+                I=1+I
+            fi
+        done
+    }
+    export setHttpOutgoingRequestHeaders
+fi
+
+
+if (( 3 > $( cat "$httpReqHeadsFile" | wc -l ) )) || \
+   [ $( date +%d | sed -r 's|^0+||' ) != $( ls -l "$httpReqHeadsFile" |
+                                                     sed -r 's|   *| |' |
+                                                     cut -d ' ' -f7 ) ]
+then
+    cat /dev/null > "$httpReqHeadsFile"
+else
+    setHttpOutgoingRequestHeaders
+
+    # This script can be sourced or executed. Trying to put the
+    # return and exit in the same expression mostly creates heartache.
+    if [ -n "$HTTP_HEADERS" ]
+    then
+        return &>/dev/null
+        exit
+    fi
+fi
+
+
+# Script only gets to this point if httpReqHeadsFile needs (re-)populated.
+echo -e "\nRefreshing HTTP request headers." >&2
+
+declare -i port=1024
+
+
+function startNetcatSever
+{
+    while (( 32000 > port ))
+    do
+        port=1+port
+        cat /etc/services | grep "$port/" &>/dev/null && \
+                                            continue # Skip stdrd server ports.
+
+        ncat -lk 127.0.0.1 $port &>"$httpReqHeadsFile" &
+
+        ncPid=$!                                    # Intentionally not local.
+        sleep .50                    # Give nc time to start listening on port.
+
+        if ss -ltnp | grep ":$port" | grep "pid=$ncPid" &>/dev/null
+        then
+            break        # ncat is running on a port that's not already taken^.
+
+        elif [ -n "$ncPid" ]
+        then
+            echo >&2
+            kill -s SIGTERM $ncPid &>/dev/null   # If ncat asks for a taken
+                # port, there's a long delay before it dies^, and it will be
+                # alive long after the ss chain finishes. So kill it here
+                # before next port attempt.
+
+                # ^Unless the port's taken by another ncat instance, then both
+                # run, both listening to the same port, with only one of them
+                # getting incoming data. Ouch!
+        fi
+    done
+
+    if ! ps -hp $ncPid -o args &>/dev/null
+    then
+        echo -e "\nFailed to start ncat server instance. Exiting." >&2
+        exit 1
+    fi
+}
+
+
+function stopNetcatServer
+{
+    echo >&2
+    kill -s SIGTERM $ncPid &>/dev/null
+}
+
+
+function captureBrowsersDefaultHttpRequestHeaders
+{
+    # Making a temp Chromium user data dir avoids prevents it openeing an tab
+    # inside of an already running Chromium instance. Having its own data dir
+    # causes an independent instance of it to be started, one that can be closed
+    # independently of other already running instances.
+    tmpDir=$( mktemp -d )
+
+    # TODO: When a Chormium with a headless mode become the norm, use it.
+    $browser --incognito --no-proxy-server --user-data-dir="$tmpDir" \
+                    http://127.0.0.1:$port/SomeImage.jpg?foo=bar &>/dev/null &
+    local browser_pid=$!
+
+    declare -i i=0
+    while (( 30 > i )) && [ ! -s "$httpReqHeadsFile" ]
+    do
+        i=i+1
+        sleep .1
+    done
+    sleep .2         # Some time to (hopefully) ensure all headers are written.
+
+    if [ ! -s "$httpReqHeadsFile" ]
+    then
+        echo "\nERROR: Didn't capture $browser's HTTP request headers!\n" >&2
+    fi
+
+    setHttpOutgoingRequestHeaders
+
+    # If the browser above opened in an existing window, its initial process
+    # will have exited by now, and thus its pid will no longer exist. Trying to
+    # kill it will do no harm because the OS does not reuse a process ID too
+    # soon. If its pid still exists at this point, then it started its own
+    # window, and closing that window is the purpose of this kill call. SIGINT
+    # is enough to stop it, and using SIGQUIT causes a message about its
+    # exit to be pushed to the console, which does not happen with SIGINT.
+    kill -s SIGINT $browser_pid &>/dev/null
+}
+
+
+startNetcatSever
+captureBrowsersDefaultHttpRequestHeaders
+stopNetcatServer
+
+[ -d "$tmpDir" ] && rm -rf "$tmpDir" &>/dev/null
+
