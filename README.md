@@ -22,3 +22,7 @@ iptbls-open-port: Opens a port in the local iptables firewall, either for
 
 iptbls-ssh-out-shell: SSH-specific wrapper around iptbls-open-port.
 
+run-as-temp-user: Runs a passed in command (line) under a randomly named
+                  temporary user. Deletes the temp user after the passed in
+                  command exits.
+
