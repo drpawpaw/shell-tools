@@ -309,8 +309,8 @@ function captureBrowsersDefaultHttpRequestHeaders
 {
     # Making a temp Chromium user data dir avoids prevents it openeing an tab
     # inside of an already running Chromium instance. Having its own data dir
-    # causes an independent instance of it to be started, one that can be closed
-    # independently of other already running instances.
+    # causes an independent instance of it to be started, one that can be
+    # closed independently of other already running instances.
     tmpDir=$( mktemp -d )
 
     # TODO: When a Chormium with a headless mode become the norm, use it.
