@@ -27,12 +27,21 @@
 # the passed in command.
 
 
-if [ "0" != "$(id -u)" ] || [ -z "$SUDO_USER" ]
+if [ 0 != "$(id -u)" ] || [ -z "$SUDO_USER" ]
 then
     echo
     echo "${0##*/} only runs as sudo root."
     exit 1
 fi
+
+for e in cut grep id sed shuf sudo tr useradd userdel
+do
+    if ! which $e &>/dev/null
+    then
+        echo -e "\n${0##*/} needs ${e}. Didn't find it.\n" >&2
+        exit 1
+    fi
+done
 
 if [ -z "$1" ]
 then
