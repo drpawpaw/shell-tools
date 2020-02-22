@@ -85,7 +85,7 @@ fi
 
 declare -r firstName=$( sed -r 's/(.)/\u\1/' <<< $u )
 declare -r userName=$u
-
+declare -r homeDir=/home/$userName
 
 declare -r lastName=$( shuf -n 1 "$LAST_NAMES_FILE" |
                        sed -r 's/^  *//' |
@@ -96,10 +96,7 @@ then
     exit 1
 fi
 
-declare -r homeDir=/home/$userName
 
-
-echo >&2
 set -o xtrace
 useradd --comment "$firstName $lastName" \
         --no-user-group \
@@ -119,6 +116,11 @@ sudo --login -u $userName "$@"
 
 echo >&2
 set -o xtrace
-userdel --remove $userName 2>/dev/null
+userdel --remove $userName
 set +o xtrace
+
+if cat /etc/passwd | grep -E "^${userName}:"
+then
+    echo -e "\nWARN: User $userName delete failed!'\a\a\a\a\a\a\a\a\a\a\n"
+fi
 
