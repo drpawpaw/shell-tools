@@ -259,7 +259,9 @@ function captureBrowsersDefaultHttpRequestHeaders
         cat /etc/services | grep "$port/" &>/dev/null && \
                                             continue # Skip stdrd server ports.
 
-        ncat -lk 127.0.0.1 $port &>"$HTTP_REQ_HEADS_FILE" &
+        # Without -k the browser that opens to send a request
+        # to ncat just hangs, along with this refresh process.
+        ncat -lk 127.0.0.1 $port &> "$HTTP_REQ_HEADS_FILE" &
         ncPid=$!
         sleep .25             # Give ncat plenty of time to to init and listen.
 
