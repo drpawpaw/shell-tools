@@ -1,0 +1,107 @@
+#!/bin/bash
+
+# Copyright (C) 2016,2020 drpawpaw. All Rights Reserved.
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+
+# Backs up all Eclipse IDE workspace preferences for reuse in other workspaces
+# or Eclipse environments.
+
+# Eclipse preferences are not Eclipse installation-based, but workspace-based,
+# meaning they are saved below the directory dedicated to maintaining the state
+# of a specific Eclipse workspace. This allows one Eclipse installation to
+# support a wide variety of distinct tool sets, providing a clean distinction
+# between workspaces (toolsets) dedicated to different primary languages or
+# frameworks, such as Java vs. C/C++, or DSL vs. web design.
+
+# An Eclipse workspace dir is one in which Eclipse, at least by default, places
+# the root directory of projects created when the workspace is the active one.
+# For this script's purpose, it's also the dir that contains a .metadata dir,
+# where workspace state is maintained, including preferences. The workspace
+# dir (NOT its settings/prefs dir) is the first arg to this script.
+
+# Script is based on
+# http://techtracer.com/2011/08/29/how-to-migrate-preferences-of-one-eclipse-workspace-to-another/
+
+
+if [ -z "$1" ] || [ -z "$2" ]
+then
+    echo -e "\nUsage: $ ${0##*/} {eclipse workspace root directory}" \
+                                "{dir to save ZIP file of prefs}"
+    echo -e "\nSee beginning of script for details.\n"
+    exit 1
+fi
+
+
+if ! which zip &>/dev/null
+then
+    echo -e "\n'zip' needs to be installed.\n"
+    exit 1
+fi
+
+
+ECLIPSE_PREFS_DIR="$1/.metadata/.plugins/org.eclipse.core.runtime/.settings"
+
+if [ ! -d "$ECLIPSE_PREFS_DIR" ] || [ ! -r "$ECLIPSE_PREFS_DIR" ]
+then
+    echo -e "\n'$ECLIPSE_PREFS_DIR' must be a readable directory.\n" >&2
+    exit 1
+fi
+
+if [ ! -d "$2" ] || [ ! -w "$2" ]
+then
+    echo -e "\n'$2' must be a writable directory.\n" >&2
+    exit 1
+fi
+
+
+TARGET_FILE_BASE="$2/$USER-$(hostname)-Eclipse-Preferences-$(date +%Y-%m-%d)"
+
+zip -rj9 "$TARGET_FILE_BASE" "$ECLIPSE_PREFS_DIR" -i *.prefs
+
+
+echo -e "\n=================================================================\n"
+
+# This grep assumes that development tool paths do
+# not contain any dirs with spaces their names.
+
+grep -E '(/(bin|dev|home|etc|mnt|media|opt|usr|var))+(/[^ ]*)*' \
+                                          "$ECLIPSE_PREFS_DIR"/*.prefs | \
+        sed -r 's|$|\n|' |
+        tee "$TARGET_FILE_BASE".txt
+
+echo -e "\n=================================================================\n"
+
+echo -e "The above Eclipse properties contain hard coded paths of the host
+that they were copied from. If using on another host, you might need to set
+their values to appropriate paths for that host.
+
+    $(hostname -s):$TARGET_FILE_BASE.txt
+
+The corresponding ZIP is
+
+    $(hostname -s):$TARGET_FILE_BASE.zip
+
+To use these prefs in another workspace, create the workspace but do not
+define any projects in it, shut down Eclipse, then unzip the ZIP to that
+workspace's
+
+    .metadata/.plugins/org.eclipse.core.runtime/.settings
+
+dir. For the above propreties that need it, edit them in their pref file to
+host specific values, or to empty strings and let Eclipse set them. Re-start
+Eclipse, open the workspace. Its ready for creating projects." | \
+                                                tee -a "$TARGET_FILE_BASE".txt
+
