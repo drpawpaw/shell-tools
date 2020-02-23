@@ -29,3 +29,5 @@ run-as-temp-user: Runs a passed in command (line) under a randomly named
                   temporary user. Deletes the temp user after the passed in
                   command exits.
 
+spellcheck: Transforms aspell's default output to a nicer cmd line format.
+
