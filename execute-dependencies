@@ -16,7 +16,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-# This sciprt is very simple minded. It will likey produce a list of
+# This script is very simple minded. It will likely produce a list of
 # executable dependencies of the analyzed script file (its required and only
 # command line arg) that is too large. Search the analyzed script, or use
 # your knowledge of it, to determine which of the questionable results are
@@ -25,7 +25,7 @@
 # It can also miss executable dependencies. E.G. It might miss some which are
 # constructed as strings during runtime and then executed with eval.
 #
-# PATH values vary from user to user. Thus, this scipt can produce different
+# PATH values vary from user to user. Thus, this script can produce different
 # dependencies lists when run under different users on the same script. For
 # each user that all or part of an analyzed script runs under, pass it into
 # this script running as that user.

@@ -100,7 +100,7 @@ workspace's
 
     .metadata/.plugins/org.eclipse.core.runtime/.settings
 
-dir. For the above propreties that need it, edit them in their pref file to
+dir. For the above properties that need it, edit them in their pref file to
 host specific values, or to empty strings and let Eclipse set them. Re-start
 Eclipse, open the workspace. Its ready for creating projects." | \
                                                 tee -a "$TARGET_FILE_BASE".txt

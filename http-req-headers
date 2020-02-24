@@ -19,7 +19,7 @@
 
 # Provides a local web browser's standard request headers, for use with tools
 # like cat, wget and lwp-request (GET). It avoids the need to hard code HTTP
-# request headers or remember to periodically revist their values.
+# request headers or remember to periodically revisit their values.
 #
 # Currently very chromium centric.
 #
@@ -96,7 +96,7 @@ fi
 
 # Call setCurlHeadersInPseudoRandomOrder as part of setting up each HTTP
 # request that uses the HTTP_REQ_HEADS string produced by this script. Chrome
-# sends its basic/standard HTTP request headers in (what what apperas to be) a
+# sends its basic/standard HTTP request headers in (what what appears to be) a
 # random order for each request. This function mimics that behavior.
 #
 # Note: One context in which Chrome always returns its default HTTP req headers
@@ -112,7 +112,7 @@ if [ function != "$( type -t setCurlHeadersInPseudoRandomOrder )" ]
 then
     function setCurlHeadersInPseudoRandomOrder
     {
-        local exculed=""
+        local excluded=""
         local userAgent=""
 
         while getopts ":u:e:" arg
@@ -121,11 +121,11 @@ then
 
                 u  ) userAgent="$OPTARG" ;;
 
-                e  ) [ -n "$exculed" ] && exculed="${exculed}|"
-                     exculed="$exculed$OPTARG" ;;
+                e  ) [ -n "$excluded" ] && excluded="${excluded}|"
+                     excluded="$excluded$OPTARG" ;;
 
                 \? ) echo "Usage: $ ${0##*/}" \
-                          "[-u userAgent] [-e HTTP req header to exclued]..."
+                          "[-u userAgent] [-e HTTP req header to excluded]..."
                      exit 1 ;;
             esac
         done
@@ -145,7 +145,7 @@ then
         declare IFS=$'\n'
         for hdr in $( echo -e $HTTP_REQ_HEADS | shuf )
         do
-            if echo "$hdr" | grep -vE "^($exculed): " &>/dev/null
+            if echo "$hdr" | grep -vE "^($excluded): " &>/dev/null
             then
                 if echo "$hdr" | grep -E '^[Uu]ser-[Aa]gent: ' &>/dev/null
                 then
@@ -288,12 +288,12 @@ function captureBrowsersDefaultHttpRequestHeaders
         exit 1
     fi
 
-    # Making a temp Chromium user data dir prevents it from openeing a tab
+    # Making a temp Chromium user data dir prevents it from opening a tab
     # inside of an already running Chromium instance, allowing it to be
     # cleanly closed independently of other already running instances.
     local tmpDir=$( mktemp -d )
 
-    # TODO: When a Chormium with a headless mode become the norm, use it.
+    # TODO: When a Chromium with a headless mode becomes the norm, use it.
     $BROWSER --incognito --no-proxy-server --user-data-dir="$tmpDir" \
                     http://127.0.0.1:$port/SomeImage.jpg?foo=bar &>/dev/null &
     local browserPid=$!

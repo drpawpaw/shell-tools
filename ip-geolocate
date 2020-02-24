@@ -20,7 +20,7 @@
 
 # Sending many requests rapidly causes some geolocate sites to stop responding.
 
-# The only text output by this script to stdout is the sumitted IP's
+# The only text output by this script to stdout is the submitted IP's
 # geolocation info. All other outputs are to stderr.
 
 #declare -r geolocaterUrl='https://whatismyipaddress.com/'

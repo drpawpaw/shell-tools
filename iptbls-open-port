@@ -35,7 +35,7 @@
 # that you're in a shell started by this script, and which port was opened.
 
 # Calls to close a port previously opened by this script must pass in the
-# exact same parameters that were passed to the open call (with the excption
+# exact same parameters that were passed to the open call (with the exception
 # of -s, which only makes sense for open calls, but passing -s into a close
 # call is safe--it's just ignored).
 
@@ -173,7 +173,7 @@ function closePort
 
 function openPort
 {
-    set -e     # Fail fast if any iptables rule create fails.
+    set -e                       # Fail fast if any iptables rule create fails.
 
     if [ o = "$direction" ]
     then
