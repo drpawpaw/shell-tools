@@ -66,7 +66,6 @@ then
     exit 1
 fi
 
-
 declare -i i=0
 while (( 10 > i ))
 do
@@ -81,6 +80,7 @@ done
 if id $u &>/dev/null
 then
     echo -e "\nFailed to establish a temp username.\n" >&2
+    exit 1
 fi
 
 declare -r firstName=$( sed -r 's/(.)/\u\1/' <<< $u )
@@ -112,12 +112,35 @@ then
     exit 1
 fi
 
+
 sudo --login -u $userName "$@"
+
+
+# Stop a user's running processes before deleting them.
+IFS=$'\n'
+for p in $( ps --no-headers -u $userName -o pid )
+do
+    for s in SIGTERM SIGINT SIGQUIT SIGKILL
+    do
+        if ps --no-headers -p $p &>/dev/null
+        then
+            echo "Sending $s to user ${userName}'s PID ${p}." >&2
+            kill -s $s $p
+            # 'kill' seems to tend to return before a process and its
+            # child processes finish responding to its signal send.
+            sleep 2
+        else
+            break
+        fi
+    done
+done
+
 
 echo >&2
 set -o xtrace
 userdel --remove $userName
 set +o xtrace
+
 
 if cat /etc/passwd | grep -E "^${userName}:"
 then
