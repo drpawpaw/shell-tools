@@ -16,12 +16,12 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-# See top of script iptbls-open-port for usage info of this script.
+# See top of script iptbls-open-hole for usage info of this script.
 
 # TODO: Add optional SSH server host/IP argument.
 
 # TODO: Add optional setting of ssh server's port.
 
 
-sudo "$HOME/bin/iptbls-open-port" -a o -s -d o -p t -n 22
+sudo "$HOME/bin/iptbls-open-hole" -a o -s -d o -p t -n 22
 
