@@ -1,6 +1,8 @@
 # shell-tools
 Misc. shell utilities.
 
+apt-upgrade: A more complete APT package management upgrade(r).
+
 backup-timestamp: Makes a backup copy of a file with a name suffixed with the
                   current time.
 
