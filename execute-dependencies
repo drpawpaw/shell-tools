@@ -57,8 +57,8 @@ function addTokenToDependencies
 {
     [ -z "$token" ] && return
 
-    [[ "$token" =~ (^|\/)bash$ ]] && return
-    [[ $token =~ ^(echo|true|false|more|which)$ ]] && return
+    [[ "$token" =~ (^|\/)bash$ ]] && token='' && return
+    [[ $token =~ ^(echo|true|false|more|which)$ ]] && token='' && return
 
     # For any of these variables that occur within a
     # possible path name, substitute their current value.
@@ -71,7 +71,6 @@ function addTokenToDependencies
             token=$( sed -r "s|\\\$$v(/\|$)|$v2\\1|g" <<< "$token" )
         fi
     done
-
     if  which "$token" &>/dev/null
     then
         dependencies="$dependencies $token"
@@ -91,7 +90,6 @@ do
     # all newlines and turns space chars into the null/empty char.
 
     LN=$( sed -r 's/ *#.*$//' <<< "$LN" )
-
     for c in $( echo "$LN" | sed -r 's|(.)|\1\n|g' )
     do
         if echo "$c" | grep -E '[-_$@/[:alnum:]]' &>/dev/null
@@ -118,7 +116,7 @@ echo "for e in $dependencies
 do
     if ! which \$e &>/dev/null
     then
-        echo -e \"\n\${0##*/} needs \${e}. Didn't find it. Exiting.\n\" >&2
+        echo -e \"\n\${0##*/} needs \${e}. Didn't find it.\n\" >&2
         exit 1
     fi
 done" >&2

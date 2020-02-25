@@ -1,0 +1,119 @@
+#!/bin/bash
+
+# Copyright (C) 2020 drpawpaw. All Rights Reserved.
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+# A more complete APT package management upgrade(r).
+
+
+CURL_PROXY=""
+unset http_proxy https_proxy
+if [ '-p' = "$1" ]
+then
+    if ! grep -E '^https?://' &>/dev/null <<< "$2"
+    then
+        echo
+        echo -e "\nHTTP proxy address must start with 'http[s]://'." \
+             "Even if it's a raw IP address."
+        exit 1
+    fi
+    export http_proxy="$2"
+    export https_proxy="$2"
+    CURL_PROXY="--proxy $2"
+else
+    echo -e "\nINFO: No HTTP/S proxy was passed in."
+fi
+
+
+for e in apt-get cat curl cut dpkg grep sed sort sudo
+do
+    if ! which $e &>/dev/null
+    then
+        echo -e "\n${0##*/} needs ${e}. Didn't find it.\n" >&2
+        exit 1
+    fi
+done
+
+
+HTTP_HEADS=""
+if which http-req-headers &>/dev/null && which chromium &>/dev/null
+then
+    echo
+    . http-req-headers
+    HTTP_HEADS="$( setCurlHeadersInPseudoRandomOrder )"
+fi
+
+
+echo -e "\nConfirming active package repositories reachable."
+
+for REPO_URL in $( cat $( find /etc/apt -type f -name '*.list' ) |
+                   grep -vE '^[[:space:]]*(#|$)' |
+                   grep -E '^[[:space:]]*deb-?[[:space:]]+' |
+                   sed -r 's|^ *||' |
+                   sed -r 's|   *| |g' |
+                   cut -d ' ' -f2 |
+                   sort -u )
+do
+    [ -n "$HTTP_HEADS" ] && HTTP_HEADS="$( setCurlHeadersInPseudoRandomOrder )"
+
+    echo -e "\ncurl -LX GET $HTTP_HEADS $CURL_PROXY --fail --retry 3" \
+                   "--retry-delay 4 --max-time 10 '$REPO_URL'"
+
+    if eval curl -LX GET $HTTP_HEADS $CURL_PROXY --fail --retry 3 \
+                 --retry-delay 4 --max-time 10 "'$REPO_URL'" 1>/dev/null
+    then
+        echo -e "\nYes: $REPO_URL"
+    else
+        echo -e "\nNo: $REPO_URL"
+        exit 1
+    fi
+done
+
+
+echo -e "\n# dpkg --audit"
+
+if ! sudo dpkg --audit
+then
+    echo -e "\n'dpkg' package audit failed. Not upgrading."
+    exit 1
+fi
+
+
+echo -e "\n# apt-get update"
+
+if ! sudo http_proxy="$http_proxy" https_proxy="$https_proxy" apt-get update
+then
+    echo -e "\n'apt-get' packages info update failed. Not upgrading."
+    exit 1
+fi
+
+
+echo -e "\n# apt-get --no-install-recommends --with-new-pkgs upgrade"
+
+if ! sudo http_proxy="$http_proxy" https_proxy="$https_proxy" \
+                      apt-get --no-install-recommends --with-new-pkgs upgrade
+then
+    echo -e "\n'apt-get' installed packages upgrades failed. Exiting."
+    exit 1
+fi
+
+
+echo -e "\n# dpkg --audit"
+sudo dpkg --audit
+
+echo -e "\n# apt-get autoclean"
+sudo apt-get autoclean
+
