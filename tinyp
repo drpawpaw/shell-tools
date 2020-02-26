@@ -1,0 +1,364 @@
+#!/bin/bash
+
+# Copyright (C) 2018,2020 drpawpaw. All Rights Reserved.
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+# World's tiniest project management program?
+#
+# A script for managing tiny to small projects as a set of text files in a dir,
+# with their relative priorities indicated by integer file name prefixes.
+# Track a project's tasks and other info in its text file. For larger projects,
+# create a directory that's a project, with each file within it created by this
+# script being a prioritized task of the project. This script's focus is on
+# priority naming and changing. Do other project files management with Linux
+# file tools.
+#
+# Usage: Create a directory to hold project text files. Place this
+#        script in it or on your PATH, and set its user execute bit.
+#
+# How-To: cd into a project dir and run these tutorial
+#         commands exactly as shown, first to last:
+#
+#           tinyp 'p a' foo
+#
+#           tinyp 'p a' -5
+#
+#           tinyp 'p a' 105
+#
+#           tinyp 'p a' 00
+#
+#           tinyp 'p a' 0
+#
+#           tinyp 'p a' 001
+#
+#       Add first project:
+#
+#           tinyp 'p a'
+#
+#       Add a new project at lowest priority:
+#
+#           tinyp 'p b'
+#
+#           tinyp 'p c'
+#
+#       Add a new project at a priority greater than lowest:
+#
+#           tinyp 'p d' 02
+#
+#           tinyp 'p e' 3
+#
+#       Do not add a project more than once (case sensitive):
+#
+#           tinyp 'p b'
+#
+#           tinyp '04-p b'
+#
+#           tinyp 'p a' 1
+#
+#           tinyp 'p a' 01
+#
+#           tinyp '01-p a'
+#
+#       Change a project's priority:
+#
+#           ls ??-*
+#
+#           tinyp 'p e' 2
+#
+#           tinyp '04-p b' 2
+#
+#           tinyp 'p b' 08
+#
+#           tinyp 'p b' 11
+#
+#           tinyp '02-p e' 7
+#
+#           tinyp '01-p a' 2     # Remaining at priority 1 is correct response.
+#
+#           tinyp '02-p d' 1     # Do this instead to flip contiguous projects.
+#
+#           tinyp 'p b' 5        # Remaining at priority 4 is correct response.
+#
+#           tinyp '05-p e' 4     # Do this instead to flip contiguous projects.
+#
+#       Eliminate prefix gaps and increment prefix duplicates:
+#
+#           touch '08-p f'
+#
+#           touch '03-p g'
+#
+#           ls ??-*
+#
+#           tinyp -c
+#
+#       Delete example project files:
+#
+#           rm ??-*
+
+
+function printUsage
+{
+    echo -e "\nUsage: $ ${0##*/} {project name} [ 0 < priority integer < 100 ]"
+    echo -e "\nSee top of $0 for tutorial.\n"
+    exit 1
+}
+
+
+[ -z "$1" ] && printUsage
+
+for P in cut find head sed sort tail touch wc
+do
+    if ! which $P &>/dev/null
+    then
+        echo -e "\nCan't find needed program '$P'.\n"
+        exit 1
+    fi
+done
+unset P
+
+if echo "$1" | grep -E '[!-_[:alnum:]]' &>/dev/null
+then
+    echo -e \
+       "\nOnly '-', '_' and alpha-numeric characters allowed in file names.\n"
+    exit 1
+fi
+
+ALIASES=$( alias -p 2>/dev/null )
+unalias -a                # Set all shell programs to their default behaviors.
+
+
+function listProjectFiles
+{
+    find . -maxdepth 1 -type f 2>/dev/null | \
+         sed -r 's|^\./||' | \
+         grep -E '^[[:digit:]]{2}-.+$' | \
+         sort
+}
+
+
+function incrementPriorityOfProject
+{
+    local P=${1#0}
+    let P=1+$P
+
+    if (( 99 < P ))
+    then
+        echo -e "\n'${0##*/}' does not handle projects with ID's > 99.\n"
+        exit 1
+    fi
+
+    (( 1 == ${#P} )) && P=0$P
+
+    local PRJCT=$( listProjectFiles |
+                   grep -E "^${P}-" )
+    [ -n "$PRJCT" ] && incrementPriorityOfProject $P
+
+    local PRJCT=$( listProjectFiles |
+                   grep -E "^${1}-" )
+    [ -n "$PRJCT" ] && mv -- "$PRJCT" "$P-${PRJCT#*-}"
+}
+
+
+function setMaxPrefix
+{
+    MAX_PREFIX=$( listProjectFiles |
+                  tail -n 1 |
+                  cut -d '-' -f1 )
+    [ -z "$MAX_PREFIX" ] && MAX_PREFIX=00
+}
+setMaxPrefix
+
+
+function incrementDuplicatePrefixes
+{
+    # May have changed since it was set during script init:
+    setMaxPrefix
+
+    local P_CNT=$( listProjectFiles |
+                   sed -r 's|^0+||' |
+                   wc -l )
+
+    (( ${MAX_PREFIX#0} == P_CNT )) && return
+
+    declare -i I=$P_CNT
+    declare -i PI=0
+    local ISTR=""
+    local IFS=$'\n'
+    local P=""
+
+    for P in $( listProjectFiles | sort -r )
+    do
+        PI=$( echo "$P" | cut -d '-' -f1 | sed -r 's|^0+||' )
+
+        (( PI == I )) && break
+
+        ISTR=$I
+        (( I < 10 )) && ISTR="0$ISTR"
+        mv -- "$P" "$ISTR-"$( echo "$P" | sed -r 's|^[0-9]+-||' )
+        I=I-1
+    done
+}
+
+
+function compactPrefixesToAContiguousRange
+{
+    # May have changed since it was set during script init:
+    setMaxPrefix
+
+    [ "00" = "$MAX_PREFIX" ] && return
+
+    MAX_PREFIX=${MAX_PREFIX#0}
+
+    declare -i I=1 I2=0
+    local F ISTR ISTR2 I3
+
+    while (( MAX_PREFIX > I ))
+    do
+        ISTR=$I
+        (( 1 == ${#ISTR} )) && ISTR=0$ISTR
+
+        F=$( listProjectFiles |
+             grep -Em 1 "^${ISTR}-" )
+
+        if [ -z "$F" ]
+        then
+            I2=1+I
+            while (( MAX_PREFIX >= I2 )) && [ -z "$F" ]
+            do
+                ISTR2=$I2
+                (( 1 == ${#ISTR2} )) && ISTR2=0$ISTR2
+
+                F=$( listProjectFiles |
+                     grep -Em 1 "^${ISTR2}-" )
+
+                if [ -n "$F" ]
+                then
+                    mv -- "$F" "$ISTR-${F#*-}"
+                    break
+                fi
+                I2=1+I2
+            done
+        fi
+
+        I=1+I
+    done
+
+    incrementDuplicatePrefixes
+}
+
+
+function addProjectAtLowestPriority
+{
+    local PRJCT=$( listProjectFiles |
+                   grep "$1" |
+                   sed -r 's|^[0-9][0-9]-||' )
+
+    if [ -n "$PRJCT" ]
+    then
+        echo -e "\nProject '$1' already exists.\n"
+        exit 0
+    fi
+
+    if [ -z "$MAX_PREFIX" ]
+    then
+        MAX_PREFIX=0
+    else
+        MAX_PREFIX=${MAX_PREFIX#0}
+    fi
+    MAX_PREFIX=$(( MAX_PREFIX + 1 ))
+
+    (( 1 == ${#MAX_PREFIX} )) && MAX_PREFIX=0$MAX_PREFIX
+
+    touch "$MAX_PREFIX-$1"
+
+    compactPrefixesToAContiguousRange
+}
+
+
+function addProjectAtSpecifiedPriority
+{
+    echo "$2" | grep -vE '^[[:digit:]]{1,2}$' &>/dev/null && printUsage
+    echo "$2" | grep -E '^0(0|$)' &>/dev/null && printUsage
+
+    local PRIORITY=$2
+    (( 1 == ${#PRIORITY} )) && PRIORITY=0$PRIORITY
+
+    if listProjectFiles | grep -E "^$PRIORITY-$1" &>/dev/null
+    then
+        echo -e "\nProject '$1' already has priority '$PRIORITY'.\n"
+        exit 0
+    fi
+
+    local PRJCT_WITH_PREFIX=$( listProjectFiles |
+                               grep -E "^$1" )
+    local PRJCT_NO_PREFIX=$( listProjectFiles |
+                             grep -E "^[[:digit:]]{2}-$1" )
+
+    if listProjectFiles | grep -E "^$PRIORITY-" &>/dev/null
+    then
+        if [ -n "$PRJCT_WITH_PREFIX" ]
+        then
+            local TMP="TMP-$( echo $1 | sed -r 's|^[0-9][0-9]-||' )"
+            mv -- "$1" "$TMP"
+
+        elif [ -n "$PRJCT_NO_PREFIX" ]
+        then
+            local TMP="TMP-$1"
+            mv -- "$PRJCT_NO_PREFIX" "$TMP"
+        fi
+
+        incrementPriorityOfProject $PRIORITY
+
+        if [ -n "$TMP" ]
+        then
+            mv -- "$TMP" "$PRIORITY-$( echo $TMP | sed -r 's|^TMP-||' )"
+        else
+            touch "$PRIORITY-$1"
+        fi
+    else
+        if [ -n "$PRJCT_WITH_PREFIX" ]
+        then
+            mv -- "$1" "$PRIORITY-$( echo $1 | sed -r 's|^[0-9][0-9]-||' )"
+
+        elif [ -n "$PRJCT_NO_PREFIX" ]
+        then
+            mv -- "$PRJCT_NO_PREFIX" "$PRIORITY-$1"
+
+        else
+            touch "$PRIORITY-$1"
+        fi
+    fi
+
+    compactPrefixesToAContiguousRange
+}
+
+
+if [ "-c" = "$1" ]
+then
+    compactPrefixesToAContiguousRange
+
+elif [ -z "$2" ]
+then
+    addProjectAtLowestPriority "$1"
+
+else
+    addProjectAtSpecifiedPriority "$@"
+fi
+
+echo
+ls -d -- [0-9][0-9]-*
+echo
+

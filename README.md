@@ -22,14 +22,17 @@ http-req-headers: Provides a local web browser's standard request headers, for
 ip-geolocate: Prints the city (region) and country in which its IP address arg
               is located.
 
-iptbls-open-hole: Opens a hole in the local iptables firewall, for outbound
-                  xor inbound packets.
+iptbls-open-hole: Opens a hole in the local iptables firewall, for network
+                  communications that originate on the host xor remotely.
 
 iptbls-ssh-out-shell: SSH-specific wrapper around iptbls-open-port.
 
-run-as-temp-user: Runs a passed in command (line) under a randomly named
-                  temporary user. Deletes the temp user after the passed in
-                  command exits.
+run-as-temp-user: Runs a passed in command line under a randomly named temp
+                  user. Deletes the user after the passed in command exits.
 
 spellcheck: Transforms aspell's default output to a nicer cmd line format.
+
+ssh-key-pari-gen: SSH key-pair generator.
+
+tinyp: World's tiniest project management application?
 
