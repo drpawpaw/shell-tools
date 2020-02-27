@@ -1,0 +1,104 @@
+#!/bin/bash
+
+# Copyright (C) 2020 drpawpaw. All Rights Reserved.
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+# Tool for listing available NICs and toggling them up/down. Prints some of the
+# lshw ouptut for each, and the IPs of those that are up. Select one that's up,
+# it shuts it down, and vice versa.
+
+
+echo -e "\n$ sudo lshw -class network | ..."
+sudo lshw -class network | \
+     grep -E '^ +(product|logical +name|configuration): ' | \
+     sed -r 's/(^ +configuration.*)/\1\n/'
+
+
+declare -A intrfcs
+
+for nic in $( ip addr show |
+            grep -E '^[0-9]+ *:' |
+            cut -d ':' -f2 |
+            tr -d ' ' |
+            grep -Ev '^(lo|tun)' )
+do
+    intrfcs[$nic]='	'$( ip addr show |
+                        grep -Em 1 "^ +inet +.* +$nic$" |
+                        sed -r 's/^ +//' |
+                        cut -d ' ' -f2 )
+
+    [ '	' = "${intrfcs[$nic]}" ] && intrfcs[$nic]='	down'
+done
+
+
+nics=""
+for nic in "${!intrfcs[@]}"
+do
+   nics="$nics$nic:${intrfcs[$nic]} "
+done
+
+
+IFS=' '
+nic=""
+while [ -z "$nic" ]
+do
+    select nic in $nics
+    do
+        break
+    done
+done
+nic=$( echo "$nic" | cut -d ':' -f1 )
+
+if [ '	down' = "${intrfcs[$nic]}" ]
+then
+    i=1
+    while (( 4 > i ))
+    do
+        echo -e "\nStarting $nic ($i)"
+        echo "\n$ sudo ifup $nic"
+        sudo ifup $nic
+
+        echo
+        ip addr show | grep -Em 1 "^ +inet +.* +$nic$" && break
+
+        sleep 0.5
+        echo -e "\a"
+        sudo ifdown $nic
+        sleep 0.5
+        i=i+1
+    done
+
+    if (( 3 < i ))
+    then
+        i=0
+        while (( i < 10 ))
+        do
+            i=i+1
+            echo -ne "\a"
+            sleep 0.3
+        done
+        echo -e "\nFailed to obtain an IP address for $nic!"
+        exit 1
+    fi
+else
+    echo -e "\nStopping $nic"
+    echo -e "\n$ sudo ifdown $nic"
+    sudo ifdown $nic
+fi
+
+echo -e "\n$ sudo route -n"
+sudo route -n
+

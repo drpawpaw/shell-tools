@@ -21,6 +21,8 @@ Misc. shell utilities.
 **http-req-headers**: Provides a local web browser's standard request headers,
                       for use with tools like cat, wget and lwp-request (GET).
 
+**if-up-down**: Tool for listing available NICs and toggling them up/down.
+
 **ip-geolocate**: Prints the city (region) and country in which its IP address
                   arg is located.
 
