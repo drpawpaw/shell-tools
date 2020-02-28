@@ -32,7 +32,7 @@ Misc. shell utilities.
 **iptbls-ssh-out-shell**: SSH-specific wrapper around iptbls-open-port.
 
 **run-as-temp-user**: Runs a passed in command line under a randomly named temp
-                  user. Deletes the user after the passed in command exits.
+                      user. Deletes the user after the passed in command exits.
 
 **spellcheck**: Transforms aspell's default output to a nicer cmd line format.
 
