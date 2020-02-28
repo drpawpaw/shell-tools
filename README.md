@@ -31,6 +31,9 @@ Misc. shell utilities.
 
 **iptbls-ssh-out-shell**: SSH-specific wrapper around iptbls-open-port.
 
+**is-dns-available**: Returns 0 if an upstream DNS server is available,
+                      non-zero if not.
+
 **run-as-temp-user**: Runs a passed in command line under a randomly named temp
                       user. Deletes the user after the passed in command exits.
 
