@@ -62,10 +62,10 @@ do
 done
 nic=$( echo "$nic" | cut -d ':' -f1 )
 
-declare -i i=1
+declare -i i=0
 if [ '	down' = "${intrfcs[$nic]}" ]
 then
-    while (( 4 > i ))
+    while (( 3 > i ))
     do
         i=i+1
         echo -e "\nStarting $nic ($i)"
@@ -81,7 +81,7 @@ then
         sleep 0.5
     done
 
-    if (( 3 < i ))
+    if (( 3 <= i ))
     then
         i=0
         while (( i < 10 ))
