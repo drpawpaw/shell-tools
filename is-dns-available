@@ -18,22 +18,22 @@
 
 # Returns 0 if an upstream DNS server is available, non-zero if not.
 
-# Add optional -p and it will also print 'yes' or 'no'.
+# Add optional -p and it will also print 'yes' or 'no' to stdout.
 
-# All its text output is on stderr.
+# All non-yes/no output is on stderr.
 
 # How this script "ensures" its result is not a possibly misleading assertion
 # from a same-host DNS resolver/server: It selects a random internet domain
-# name from file TOP_DOMAINS, which it script must be configured to point at.
+# name from file TOP_DOMAINS, which this script must be configured to point at.
 # I.E. It requests the IP of a domain that has not likely been searched
-# for recently from the host, forcing dig to make an upstream DNS request.
-# Thus, this script is also effectively an "is network accessible" script.
+# for recently from the host, forcing an upstream DNS request. Thus, this
+# script is also effectively an "is network accessible" script.
 #
 # The larger the TOP_DOMAINS file is the more likely the requested domain is
 # not in the local resolver/server's cache, making its return value more
 # reliable.
 #
-# Example command that will populated such a file:
+# Example command that will populate such a file:
 #
 #     $ curl -X GET 'https://www.alexa.com/topsites/countries/US' | \
 #                   grep '<a href="https://www.alexa.com/siteinfo/' |
@@ -51,10 +51,15 @@
 # root name sever, it does include the NS query option for this reason: If by
 # some chance another host on the LAN has requested the same domain recently
 # enough for the answer to be in the LAN DNS server's cache, it will be
-# unlikely the cached answer is for an NS lookup on the domain. Thus, the
-# request will likely be pushed upstream onto the internet. I.E. This script
-# is more often effectively an "is internet accessible" script than just an
-# "is network accessible" one.
+# less likely the cached answer is for an NS lookup. Thus, the request will
+# more likely be pushed upstream onto the internet. I.E. This script is more
+# often effectively an "is internet accessible" script than just an "is
+# network accessible" one.
+#
+# One weakness of this script is that if it searches a hostname that does not
+# have an authority name server, it will return false/no. However, if it's only
+# searching for hostnames from the most busy web sites on the planet, this is
+# very unlikely to occur.
 
 
 declare -r DOMAINS=bin/sys-admin/config/top-web-sites.txt
@@ -85,18 +90,30 @@ reverseLookup='-x'
 # randomDomain has chars other than digits, '.' and ':' => NOT reverse lookup.
 echo "$randomDomain" | grep -E '[^0-9:.]' &>/dev/null && reverseLookup=""
 
-dig +dnssec +tries=3 +time=2 $reverseLookup "$randomDomain" NS &>/dev/null
-D="$?"
+# Doing DNSSEC validation does not add value to this scirpt's function.
+#dig +dnssec +tries=3 +time=2 $reverseLookup "$randomDomain" NS
+
+# dig seems to return 0 if it reaches a DNS server, even if it's a local one
+# that itself connot reach even a local network. So examine the results to
+# determine DNS availablity/success. NS lookups do not always return ANSWER
+# or AUTHORITY SECTIONs, but when they succeed they return one of them.
+
+declare -r answers=$( dig +tries=3 +time=2 $reverseLookup \
+                                          "$randomDomain" NS   |
+                      grep -iEA 3 '^ *;; +(ANSWER|AUTHORITY) +SECTION *:' |
+                      grep -iE '[ 	]+IN[ 	]+' )
+
+[ -n "$answers" ] && echo "$answers" >&2
 
 if [ "-p" = "$1" ]
 then
-    if [ "0" = "$D" ]
+    if [ -n "$answers" ]
     then
-        echo yes >&2
+        echo yes
     else
-        echo no >&2
+        echo no
     fi
 fi
 
-exit $D
+[ -n "$answers" ]            # bash returns value of last evaluated expression.
 
