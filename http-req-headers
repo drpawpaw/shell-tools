@@ -18,7 +18,7 @@
 
 
 # Provides a local web browser's standard request headers, for use with tools
-# like cat, wget and lwp-request (GET). It avoids the need to hard code HTTP
+# like crul, wget and lwp-request (GET). It avoids the need to hard code HTTP
 # request headers or remember to periodically revisit their values.
 #
 # Currently very chromium centric.

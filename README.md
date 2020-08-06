@@ -19,7 +19,7 @@ Misc. shell utilities.
                      streams.
 
 **http-req-headers**: Provides a local web browser's standard request headers,
-                      for use with tools like cat, wget and lwp-request (GET).
+                      for use with tools like curl, wget and lwp-request (GET).
 
 **if-up-down**: Tool for listing available NICs and toggling them up/down.
 
@@ -33,6 +33,8 @@ Misc. shell utilities.
 
 **is-dns-available**: Returns 0 if an upstream DNS server is available,
                       non-zero if not.
+
+**journal-tail**: Tails journald files using common journalctl and grep params.
 
 **run-as-temp-user**: Runs a passed in command line under a randomly named temp
                       user. Deletes the user after the passed in command exits.
