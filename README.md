@@ -36,6 +36,9 @@ Misc. shell utilities.
 
 **journal-tail**: Tails journald files using common journalctl and grep params.
 
+**passwd-gen**: Generates likely random-enough passwords of any length. Likely
+                secure enough for most use cases.
+
 **run-as-temp-user**: Runs a passed in command line under a randomly named temp
                       user. Deletes the user after the passed in command exits.
 
