@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# Copyright (C) 2020 drpawpaw. All Rights Reserved.
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# Generates likely random-enough passwords of any length.
+# Likely secure enough for most use cases.
+# https://en.m.wikipedia.org/wiki//dev/random
+
+
+if ! (( $1 > 0 )) &>/dev/null
+then
+    echo -e "\nUsage: $ ${0##*/} {positive interger password length}"
+    exit 1
+fi
+
+# Excludes some characters most likely to be mishandled by string handling code
+# in shell scripts, PHP, JavaScript, etc.
+
+# 4 consecutive backslashes seem to be the safest approach on the bash cmd line
+# to getting tr to recognize one as a non-meta character, at least when the
+# bash string is double quote delimited. But 3 work, also, if they're not the
+# last three characters in the string. 2 also work, but only if they are the
+# last characters in the string, and only if you're OK with a warning message
+# that the string is not portable.
+
+cat /dev/urandom | tr -dc '[:graph:]' | \
+                   tr -d "\"\`\'\$\\\\|*?:;/.&({[<>#" | \
+                   head -c $1
+
