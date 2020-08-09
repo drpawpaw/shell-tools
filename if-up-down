@@ -68,7 +68,7 @@ then
     while (( 3 > i ))
     do
         i=i+1
-        echo -e "\nStarting $nic ($i)"
+        echo -e "\nStarting $nic (attempt $i)"
         echo -e "\n$ sudo ifup $nic"
         sudo ifup $nic
 
@@ -81,14 +81,14 @@ then
         sleep 0.5
     done
 
-    if (( 3 <= i ))
+    if ! ip addr show | grep -Em 1 "^ +inet +.* +$nic$" &>/dev/null
     then
         i=0
         while (( i < 10 ))
         do
             i=i+1
             echo -ne "\a"
-            sleep 0.3
+            sleep 0.4
         done
         echo -e "\nFailed to obtain an IP address for $nic!"
         exit 1
