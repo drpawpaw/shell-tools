@@ -15,7 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Generates likely random-enough passwords of any length.
+# Generates likely random-enough passwords of any positive length.
 # Likely secure enough for most use cases.
 # https://en.m.wikipedia.org/wiki//dev/random
 

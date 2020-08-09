@@ -34,10 +34,11 @@ Misc. shell utilities.
 **is-dns-available**: Returns 0 if an upstream DNS server is available,
                       non-zero if not.
 
-**journal-tail**: Tails journald files using common journalctl and grep params.
+**journal-tail**: Tails journald files or syslog using common journalctl, tail
+                  and grep params.
 
-**passwd-gen**: Generates likely random-enough passwords of any length. Likely
-                secure enough for most use cases.
+**passwd-gen**: Generates likely random-enough passwords of any positive
+                length. Likely secure enough for most use cases.
 
 **run-as-temp-user**: Runs a passed in command line under a randomly named temp
                       user. Deletes the user after the passed in command exits.

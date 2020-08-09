@@ -15,23 +15,56 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Tails journald files with common journalctl and grep params.
+# Tails journald files or syslog using common journalctl, tail and grep params.
+
+
+sl=false
+n=1000
+
+declare -i shft=0
+while getopts ":sn:" param
+do
+    case $param in
+
+        s  ) declare -r sl=true ;
+             shft=1+shft ;;
+
+        n  ) declare -r n=$OPTARG ;
+             shft=2+shft ;;
+
+        \? ) echo -e "\nUsage: $ ${0##*/} [-s] [-n {postive int}]" ;
+             exit ;;
+    esac
+done
+(( 0 < $shft )) && shift $shft
+
 
 if [ -n "$1" ]
 then
-    COLOR=--color
-    GREP="$1"
+    colr=--color
+    grp="$1"
 else
-    COLOR=""
-    GREP='.*'
+    colr=""
+    grp='.*'
 fi
+
 
 echo -e "\n$ sudo journalctl --disk-usage"
 sudo journalctl --disk-usage
 
-echo -e "\n$ sudo journalctl -a -n 1000 -f -o short-precise --no-pager |" \
-                 "grep -iE $COLOR \"$GREP\""
 
-sudo journalctl -a -n 1000 -f -o short-precise --no-pager | \
-     grep -iE $COLOR "$GREP"
+if $sl
+then
+    echo -e \
+         "\n$ sudo tail -n $n -F /var/log/syslog  | grep -iE $colr \"$grp\""
+
+    sudo tail -n $n -F /var/log/syslog  | grep -iE $colr "$grp"
+
+else
+    echo -e "\n$ sudo journalctl -a -n 1000 -f -o short-precise --no-pager |" \
+                     "grep -iE $colr \"$grp\""
+
+    sudo journalctl -a -n $n -f -o short-precise --no-pager | \
+         grep -iE $colr "$grp"
+fi
 
