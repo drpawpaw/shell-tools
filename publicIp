@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# Currently works over both http and https.
+curl -sX GET https://ipinfo.io/ip
+
