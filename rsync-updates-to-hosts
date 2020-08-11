@@ -1,0 +1,115 @@
+#!/bin/bash
+
+
+# Copyright (C) 2020 drpawpaw. All Rights Reserved.
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+# Keeps a dir hierarchy on set of remote hosts in sync with the same dir on
+# the host it runs on. On each synced host only the files it already has in
+# common with the source host are synced. No files on the synced hosts are
+# deleted or moved. If the same file on the source and a synced host is moved
+# on either it's only synced if moved to the same location on both. Uses a
+# text file for 'rysnc' exclude patterns.
+
+# Example excludes file:
+#
+## One rsync 'exclude' cmd line param per line.
+##
+#--exclude=*foo*[Bb]ar*      # comment
+
+
+declare -r EXCLUDES_FILE="$HOME/bin/config/rsync-updates-to-hosts-EXCLUDES.txt"
+
+
+for e in cat grep rsync sed
+do
+    if ! which $e &>/dev/null
+    then
+        echo -e "\n${0##*/} needs ${e}. Didn't find it.\n" >&2
+        exit 1
+    fi
+done
+
+
+if [ ! -d "$1" ] || [ ! -r "$1" ] || [ ! -x "$1" ]
+then
+    echo -e "\nCan't access content of dir '$1'. Not syncing updates.\n" >&2
+    exit 1
+fi
+
+
+if ! echo "$1" | grep -E '^/' &>/dev/null
+then
+    echo -e "\nFisrt arg must be a full path to a local dir: $1\n" >&2
+    exit 1
+fi
+baseDir=$( sed -r 's|/$||' <<< "$1" )
+echo -en "\nSyncing '$baseDir' to "
+shift 1
+
+if [ -z "$@" ]
+then
+    echo -e "\n\nNo hosts provided to sync to."
+    exit 1
+fi
+echo "$@"
+
+
+if [ ! -f "$EXCLUDES_FILE" ] || [ ! -r "$EXCLUDES_FILE" ]
+then
+    echo -e "\nCan't access '$EXCLUDES_FILE'. For data safety it must exist," \
+            "even if empty."
+    exit 1
+fi
+
+
+exclude=""
+IFS=$'\n'
+for l in $( cat "$EXCLUDES_FILE" |
+            grep -E '^ *--exclude=' |
+            sed -r 's/ +#.*//' )
+do
+    exclude="$exclude $l"
+done
+echo -e "\nExcluding:$( echo "$exclude" | sed -r 's/ +--exclude=/\n/g' )"
+
+
+for h in $@
+do
+    echo -e "\n---------------- $h ----------------\n"
+    eval rsync --dry-run \
+          --progress --existing --update --archive --recursive \
+          --protect-args \
+          "$exclude" \
+          \"$baseDir\"/ $h:\"$baseDir\" | \
+          more
+
+    # TODO: Add cmd line param to sync without asking permission.
+
+    echo -e "\nThe above local files below '$baseDir' are newer than" \
+            "their peers on ${h}. Copy them to $h? (y/n) "
+    read -er
+    if [ y = "$REPLY" ]
+    then
+        eval rsync -v --stats \
+                      --progress --existing --update --archive --recursive \
+                      --protect-args \
+                      "$exclude" \
+                      \"$baseDir\"/ $h:\"$baseDir\"
+    fi
+    REPLY=""
+done
+

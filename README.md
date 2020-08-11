@@ -40,6 +40,13 @@ Misc. shell utilities.
 **passwd-gen**: Generates likely random-enough passwords of any positive
                 length. Likely secure enough for most use cases.
 
+**publicIp**: Prints to stdout host's IP as seen on the internet.
+
+**rsync-updates-to-hosts**: Keeps a dir hierarchy on set of remote hosts in
+                            sync with the same dir on the host it runs on.
+                            On each synced host only the files it already has
+                            in common with the source host are synced.
+
 **run-as-temp-user**: Runs a passed in command line under a randomly named temp
                       user. Deletes the user after the passed in command exits.
 

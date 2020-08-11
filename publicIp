@@ -1,5 +1,8 @@
 #!/bin/bash
 
-# Currently works over both http and https.
+# To use in a web-proxied env:
+#
+#   $ https_proxy='http://<proxy ip>:<port>' publicIp
+
 curl -sX GET https://ipinfo.io/ip
 
