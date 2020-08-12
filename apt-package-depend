@@ -1,0 +1,68 @@
+#!/bin/bash
+
+# Prints a tree and a flat listing of an APT pacakge's package dependencies.
+# It does not print everything 'apt-cache depends' does, but for most packages
+# its output is complete (correct), and for the minority remainder its output
+# is close enough for must use cases. Package names printed in <> brackets
+# should be followed up with an explicit call to 'apt-cache depends' for each.
+#
+# https://askubuntu.com/questions/25361/in-apt-cache-depends-output-what-is-\
+#                                            the-meaning-of-suggests-recommends
+
+# Copyright (C) 2020 drpawpaw. All Rights Reserved.
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+
+#sudo apt-get update
+
+declare -A packDepends
+declare tabs=""
+
+function setPackagesPackageDependencies
+{
+    echo -e "\n$tabs\033[32m$1:\033[0m"
+    tabs="$tabs\t"
+
+    local DEPENDS=$( sudo apt-cache depends "$1" 2>/dev/null |
+                     grep 'Depends: ' |
+                     sed -r 's|^ *||' |
+                     sed -r 's|   *| |g' |
+                     cut -d ' ' -f2 |
+                     tr '\n' ' ' )
+
+    for P in $DEPENDS
+    do
+        echo -e "$tabs$P"
+    done
+
+    for P in $DEPENDS
+    do
+        [[ -v packDepends[$P] ]] && continue
+
+        packDepends[$P]="$P"
+        setPackagesPackageDependencies "$P"
+    done
+    tabs=$( echo "$tabs" | sed -r 's/\\t$//' )
+}
+
+setPackagesPackageDependencies "$1"
+
+echo
+for P in $( echo ${packDepends[@]} | tr ' ' '\n' | sort -u | tr '\n' ' ' )
+do
+    echo "$P"
+done
+

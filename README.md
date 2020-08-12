@@ -1,6 +1,9 @@
 # shell-tools
 Misc. shell utilities.
 
+**apt-package-depend**: Prints a tree and a flat listing of an APT pacakge's
+                        package dependencies.
+
 **apt-upgrade**: A more complete APT package management upgrade(r).
 
 **backup-timestamp**: Makes a backup copy of a file with a name suffixed with
