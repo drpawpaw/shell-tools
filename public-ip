@@ -2,7 +2,7 @@
 
 # To use in a web-proxied env:
 #
-#   $ https_proxy='http://<proxy ip>:<port>' publicIp
+#   $ https_proxy='http://<proxy ip>:<port>' $0
 
 curl -sX GET https://ipinfo.io/ip
 

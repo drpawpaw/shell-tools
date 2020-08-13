@@ -1,0 +1,101 @@
+#!/bin/bash
+
+# Stops all processes with the same simple name. Intended for use in sciprts.
+# Use with caution. Read its code closely to make sure it fits usage context.
+
+
+# Copyright (C) 2020 drpawpaw. All Rights Reserved.
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+if [ "0" != "$(id -u)" ]
+then
+    echo
+    echo "'${0##*/}' only runs as root. Exiting."
+    exit 1
+fi
+
+
+if [ -z "$1" ] || [ -z "$2" ]
+then
+    echo
+    echo "Usage: # ${0##*/} {process name} {sleep seconds between kill calls}"
+    exit 1
+fi
+
+
+for E in id kill ps sleep tr
+do
+    if ! which "$E" &>/dev/null
+    then
+        echo
+        echo "Didn't find executable '$E' needed by '${0##*/}'. Exiting."
+        exit 1
+    fi
+done
+
+
+echo
+echo -n "Stopping $1 instances: " >&2
+IFS=' '
+for S in SIGTERM SIGINT SIGQUIT SIGKILL     # Start nice, get meaner if needed.
+do
+    # ps default ordering starts with parent process id, then children.
+    P=""
+    pids=$( ps --no-headers -o pid -C $1 | tr '\n' ' ' )
+    echo $pids >&2
+
+    for P in $pids
+    do
+        # Confirm a process is still alive before attempting to stop it.
+        if ps --no-headers -p $P &>/dev/null
+        then
+            echo -e "\n$S -> $P $1" 1>&2
+            kill -s $S $P
+
+            # kill often returns before a process and its childern finish
+            # shutting down, so give them some time to avoid sending kill
+            # signals to processes that have already stopped.
+            sleep $2
+        fi
+    done
+
+    # Find processes started with, for example, bash's
+    # 'exec -a', which the above for loop can't find.
+    for P in $( ps -ef --no-headers |
+                grep -E "( |/)$1( |$)" |
+                grep -vE "( grep |${0##*/}) " |
+                sed -r 's/^ *//' |
+                sed -r 's/   */ /g' |
+                cut -d ' ' -f2 |
+                sort -r |
+                tr '\n' ' ' )
+    do
+        echo -e "\n$S -> $P $1" 1>&2
+        kill -s $S $P
+        sleep $2
+    done
+
+    echo
+    echo -n "$1 instances not stopped by $S: " >&2
+    if ! ps -ef --no-headers | \
+         grep -E "( |/)$1( |$)" | \
+         grep -vE "( grep |${0##*/}) " >&2
+    then
+        echo "none" >&2
+        break
+    fi
+done
+

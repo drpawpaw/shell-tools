@@ -43,7 +43,9 @@ Misc. shell utilities.
 **passwd-gen**: Generates likely random-enough passwords of any positive
                 length. Likely secure enough for most use cases.
 
-**publicIp**: Prints to stdout host's IP as seen on the internet.
+**process-stop**: Stops all processes with the same simple name.
+
+**public-ip**: Prints to stdout host's IP as seen on the internet.
 
 **rsync-updates-to-hosts**: Keeps a dir hierarchy on set of remote hosts in
                             sync with the same dir on the host it runs on.
