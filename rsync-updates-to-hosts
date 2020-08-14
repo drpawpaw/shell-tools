@@ -60,12 +60,12 @@ baseDir=$( sed -r 's|/$||' <<< "$1" )
 echo -en "\nSyncing '$baseDir' to "
 shift 1
 
-if [ -z "$@" ]
+if [ -z "$*" ]
 then
     echo -e "\n\nNo hosts provided to sync to."
     exit 1
 fi
-echo "$@"
+echo $@
 
 
 if [ ! -f "$EXCLUDES_FILE" ] || [ ! -r "$EXCLUDES_FILE" ]

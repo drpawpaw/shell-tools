@@ -1,0 +1,73 @@
+#!/bin/bash
+
+
+# Performs the most common service management commands (start, restart, stop)
+# on most Linux systems, independent of which services manager is installed.
+
+
+# Copyright (C) 2020 drpawpaw. All Rights Reserved.
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+
+if [ "0" != "$(id -u)" ]
+then
+    echo
+    echo "'${0##*/}' only runs as root. Exiting."
+    exit 1
+fi
+
+
+if [ -z "$2" ] || ( [ start != "$1" ] && [ stop != "$1" ] )
+then
+    echo
+    echo "Usage: ${0##*/} {start|stop} {simple service name}"
+    exit 1
+fi
+
+if [ start = "$1" ]
+then
+    declare -r ACTN="restart"
+else
+    declare -r ACTN="stop"
+fi
+
+declare -r SRVC="$2"
+
+echo -e "\n$ACTN -> $SRVC\n" 1>&2
+
+if which systemctl &>/dev/null
+then
+    systemctl --no-pager $ACTN $SRVC
+    sleep 2
+    systemctl --no-pager status -l $SRVC
+
+elif which service &>/dev/null
+then
+    service $SRVC $ACTN
+    sleep 2
+    service $SRVC status
+
+elif [ -f /etc/init.d/$SRVC ]
+then
+    /etc/init.d/$SRVC $ACTN
+    sleep 2
+    /etc/init.d/$SRVC status
+
+else
+    echo -e "\a\nWARN: Failed to $ACTN '$SRVC'!\a" 1>&2
+    exit 1
+fi
+

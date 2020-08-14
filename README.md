@@ -55,6 +55,10 @@ Misc. shell utilities.
 **run-as-temp-user**: Runs a passed in command line under a randomly named temp
                       user. Deletes the user after the passed in command exits.
 
+**service-start-stop**: Performs the most common service management commands
+                        (start, restart, stop) on Linux systems, independent of
+                        which services manager is installed.
+
 **spellcheck**: Transforms aspell's default output to a nicer cmd line format.
 
 **ssh-key-pari-gen**: SSH key-pair generator.
