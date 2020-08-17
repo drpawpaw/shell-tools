@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# Reduces to size zero all log files last modified over N days ago.
+# Suggestion: Place it in /etc/cron.daily.
+
+declare -r days=90
+
+logger -i -p cron.info \
+            "Nulling-out log files last modified more than $days days ago."
+
+IFS=$'\n'
+for f in $( find /var/log /var/backups -type f -mtime +$days -name '*\.log*' )
+do
+    cat /dev/null > "$f"
+    logger -i -p cron.info \
+                "Nulled-out log last modified more than $days days ago: $f"
+done
+

@@ -65,3 +65,6 @@ Misc. shell utilities.
 
 **tinyp**: World's tiniest project management application?
 
+**z-old-logs-dev-null**: Reduces to size zero all log files last modified over
+                         N days ago.
+
