@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# Starts a GUI on a remote host that displays in local host's X Windows.
+# Assumes user's local host .ssh/config contains an entry for the remote host
+# that defines a nickname.
+
+if [ -z "$1" ] || [ -z "$2" ]
+then
+    echo -e "\nUsage: $ ${0##*/} {remote-ssh-host-nickame} {gui app to start}"
+    exit 1
+fi
+
+simple=$( echo "${2##*/}" | sed -r "s/ .*//" )
+out="$HOME"/$simple-$1.out
+
+nohup ssh -X $1 -- $2 &>"$out" &
+
+echo -e "\nstdout/err -> $out"
+

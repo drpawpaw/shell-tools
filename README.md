@@ -47,6 +47,9 @@ Misc. shell utilities.
 
 **public-ip**: Prints to stdout host's IP as seen on the internet.
 
+**remote-gui-start**: Starts a GUI on a remote host that displays in local
+                      host's X Windows.
+
 **rsync-updates-to-hosts**: Keeps a dir hierarchy on set of remote hosts in
                             sync with the same dir on the host it runs on.
                             On each synced host only the files it already has
