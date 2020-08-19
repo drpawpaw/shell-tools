@@ -11,9 +11,11 @@ then
 fi
 
 simple=$( echo "${2##*/}" | sed -r "s/ .*//" )
-out="$HOME"/$simple-$1.out
+out="$HOME"/$1-$simple.out
 
-nohup ssh -X $1 -- $2 &>"$out" &
+nohup ssh -vX $1 -- $2 &>"$out" &
 
+touch "$out"
+chmod go-rwx "$out"
 echo -e "\nstdout/err -> $out"
 
