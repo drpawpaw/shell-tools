@@ -4,6 +4,13 @@
 # Assumes user's local host .ssh/config contains an entry for the remote host
 # that defines a nickname.
 
+conType=-X
+if [ '-Y' = "$1" ]
+then
+    conType=$1
+    shift 1
+fi
+
 if [ -z "$1" ] || [ -z "$2" ]
 then
     echo -e "\nUsage: $ ${0##*/} {remote-ssh-host-nickame} {gui app to start}"
@@ -13,7 +20,7 @@ fi
 simple=$( echo "${2##*/}" | sed -r "s/ .*//" )
 out="$HOME"/$1-$simple.out
 
-nohup ssh -vX $1 -- $2 &>"$out" &
+nohup ssh -v $conType $1 -- $2 &>"$out" &
 
 touch "$out"
 chmod go-rwx "$out"
