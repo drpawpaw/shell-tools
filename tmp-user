@@ -1,0 +1,151 @@
+#!/bin/bash
+
+
+# Creates a temporary user with a random first and last name. Its username is
+# the first name all lowercase. Created users have home dirs and a login
+# shells, but no passwords. Also deletes users. First stops all the passed-in
+# username's processes, then deletes it, including its home dir. It's only
+# output to stdout is a created user's username. All other output is on stderr.
+
+
+# Copyright (C) 2018,2020 drpawpaw. All Rights Reserved.
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+# Lists of names are easy to find on the web. One name per line.
+declare -r FIRST_NAMES="/home/$SUDO_USER/bin/config/names-english-first.txt"
+declare -r LAST_NAMES="/home/$SUDO_USER/bin/config/names-english-last.txt"
+
+
+if [ 0 != "$(id -u)" ]
+then
+    echo -e "\n${0##*/} only runs as root." >&2
+    exit 1
+fi
+
+
+for e in cut grep id kill ps sed shuf sleep tr
+do
+    if ! which $e &>/dev/null
+    then
+        echo -e "\n${0##*/} needs ${e}. Didn't find it.\n" >&2
+        exit 1
+    fi
+done
+
+
+if [ '-c' = "$1" ]
+then
+
+    if [ ! -f "$FIRST_NAMES" ] || [ ! -r "$FIRST_NAMES" ]
+    then
+        echo -e "\nCan't read $FIRST_NAMES.\n" >&2
+        exit 1
+    fi
+
+    if [ ! -f "$LAST_NAMES" ] || [ ! -r "$LAST_NAMES" ]
+    then
+        echo -e "\nCan't read $LAST_NAMES.\n" >&2
+        exit 1
+    fi
+
+    declare -i i=0
+    while (( 10 > i ))
+    do
+        i=i+1
+        u=$( shuf -n 1 "$FIRST_NAMES" |
+             sed -r 's/^  *//' |
+             cut -d ' ' -f1 |
+             tr '[:upper:]' '[:lower:]' )
+         ( ! id $u &>/dev/null ) && break
+    done
+
+    if id $u &>/dev/null
+    then
+        echo -e "\nFailed to establish a temp username.\n" >&2
+        exit 1
+    fi
+
+    declare -r firstName=$( sed -r 's/(.)/\u\1/' <<< $u )
+    declare -r userName=$u
+    declare -r homeDir=/home/$userName
+
+    declare -r lastName=$( shuf -n 1 "$LAST_NAMES" |
+                           sed -r 's/^  *//' |
+                           cut -d ' ' -f1 )
+    if [ -z "$lastName" ]
+    then
+        echo -e "\nFailed to set last name.\n" >&2
+        exit 1
+    fi
+
+    useradd --comment "$firstName $lastName" \
+            --no-user-group \
+            --no-log-init \
+            --home-dir $homeDir \
+            --create-home \
+            $userName
+
+    echo -en "\nTemp user: " >&2
+    if ! id $userName >&2 || ! grep -E "^$userName:" /etc/passwd >&2
+    then
+        echo -e "\a\nFailed to create user ${userName}.\n\a" >&2
+        exit 1
+    fi
+
+    echo $userName
+
+elif [ '-d' = "$1" ] && [ -n "$2" ]
+then
+    userName=$2
+
+    if ! id -u $userName &>/dev/null
+    then
+        echo -e "\n$userName DNE." >&2
+        exit 1
+    fi
+
+    # Stop all userName's processes before deleting user.
+    IFS=$'\n'
+    for p in $( ps --no-headers -u $userName -o pid )
+    do
+        echo >&2
+        for s in SIGTERM SIGINT SIGQUIT SIGKILL
+        do
+            if ps --no-headers -p $p &>/dev/null
+            then
+                echo "$s -> ${userName}:${p}" >&2
+                kill -s $s $p
+                sleep 0.5
+            else
+                break
+            fi
+        done
+    done
+
+    userdel --remove $userName 2>&1 | grep -v "mail spool" >&2
+
+    if id -u $userName &>/dev/null
+    then
+        echo -e "\a\nERROR: User $userName delete failed!\n\a" >&2
+    else
+        echo -e "\nDeleted user $userName." >&2
+    fi
+
+else
+    echo -e "\nUsage: $ ${0##*/} {-c|-d {username}}" >&2
+    exit 1
+fi
+

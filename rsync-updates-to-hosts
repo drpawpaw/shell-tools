@@ -87,11 +87,21 @@ done
 echo -e "\nExcluding:$( echo "$exclude" | sed -r 's/ +--exclude=/\n/g' )"
 
 
+localHost=$( hostname -s )
 for h in $@
 do
     echo -e "\n---------------- $h ----------------\n"
+
+    # Do NOT use --update because it hides files on a destination host that
+    # should be identical to those on the source host (and often are) that
+    # somehow have newer timestamps on the destination host. This, along with
+    # that fact that --update IS USED during the actual copy allows you to
+    # see the conflicts without risking loosing changes to destination copies
+    # of different-timestamp files that you want to retain.
+            #--progress --existing --update --archive --recursive \
+
     eval rsync --dry-run \
-          --progress --existing --update --archive --recursive \
+          --progress --existing --archive --recursive \
           --protect-args \
           "$exclude" \
           \"$baseDir\"/ $h:\"$baseDir\" | \
@@ -99,11 +109,13 @@ do
 
     # TODO: Add cmd line param to sync without asking permission.
 
-    echo -e "\nThe above local files below '$baseDir' are newer than" \
-            "their peers on ${h}. Copy them to $h? (y/n) "
+    echo -e "\nThe above files below $localHost:$baseDir have different" \
+            "timestamps (newer AND older) than their peers on ${h}. Copy" \
+            "ONLY the $localHost ones with NEWER timestamps to $h? (y/n) "
     read -er
     if [ y = "$REPLY" ]
     then
+        # DO use --update during the actual copy.
         eval rsync -v --stats \
                       --progress --existing --update --archive --recursive \
                       --protect-args \

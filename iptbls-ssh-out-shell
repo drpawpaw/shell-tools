@@ -22,6 +22,5 @@
 
 # TODO: Add optional setting of ssh server's port.
 
-
-sudo "$HOME/bin/iptbls-open-hole" -a o -s -d o -p t -n 22
+sudo iptbls-open-hole -a o -s -d o -p t -n 22
 

@@ -129,7 +129,7 @@ do
 done
 unset P
 
-if echo "$1" | grep -E '[!-_[:alnum:]]' &>/dev/null
+if echo "$1" | grep -E '[^ [:alnum:]_-]' &>/dev/null
 then
     echo -e \
        "\nOnly '-', '_' and alpha-numeric characters allowed in file names.\n"
