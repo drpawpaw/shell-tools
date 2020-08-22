@@ -22,5 +22,9 @@
 
 # TODO: Add optional setting of ssh server's port.
 
-sudo iptbls-open-hole -a o -s -d o -p t -n 22
+# Do NOT launch iptbls-open-hole as sudo, because if done AND this script is
+# also launched as sudo, then SUDO_USER wihtin iptbls-open-hole is root!
+# It would be very unlikely anyone would ever want SUDO_USER=root.
+
+iptbls-open-hole -a o -s -d o -p t -n 22
 

@@ -275,8 +275,8 @@ then
         echo "echo -e '\033]2;'$proto:$port ${0##*/}'\007'"          >> "$TF"
         echo "cd $PWD"                                               >> "$TF"
         echo "env | grep SSH"                                        >> "$TF"
-
-        sudo -iu $SUDO_USER ssh-agent bash --rcfile "$TF"
+echo "SUDO_USER: $SUDO_USER"
+        sudo --login -u $SUDO_USER ssh-agent bash --rcfile "$TF"
         rm -f "$TF"
         echo -e "\nClosing $proto:${port}."
         closePort
