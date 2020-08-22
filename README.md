@@ -55,9 +55,6 @@ Misc. shell utilities.
                             On each synced host only the files it already has
                             in common with the source host are synced.
 
-**run-as-temp-user**: Runs a passed in command line under a randomly named temp
-                      user. Deletes the user after the passed in command exits.
-
 **service-start-stop**: Performs the most common service management commands
                         (start, restart, stop) on Linux systems, independent of
                         which services manager is installed.
@@ -65,6 +62,15 @@ Misc. shell utilities.
 **spellcheck**: Transforms aspell's default output to a nicer cmd line format.
 
 **ssh-key-pari-gen**: SSH key-pair generator.
+
+**tmp-user**: Creates a temporary user with a random first and last name. Its
+              username is the first name all lowercase. Created users have home
+              dirs and login shells, but no passwords. Also deletes users.
+              First stops all the passed-in username's processes, then deletes
+              it, including its home dir.
+
+**tmp-user-run**: Runs a passed in command line under a randomly named temp
+                  user. Deletes the user after the passed in command exits.
 
 **tinyp**: World's tiniest project management application?
 
