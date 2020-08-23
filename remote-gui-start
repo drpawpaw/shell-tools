@@ -20,7 +20,7 @@ fi
 # TODO: Add SSH agent SOCK check here. If none, create one: ssh-agent -s
 
 simple=$( echo "${2##*/}" | sed -r "s/ .*//" )
-out="$HOME"/x-$1-$simple.out
+out="$HOME"/.x-$1-$simple.out
 
 ssh $1 -- exit  # Provides an SSH private key password prompt that does not
                 # echo clear-text password chars, which the nohup below does.

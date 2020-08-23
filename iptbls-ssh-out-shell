@@ -26,5 +26,11 @@
 # also launched as sudo, then SUDO_USER wihtin iptbls-open-hole is root!
 # It would be very unlikely anyone would ever want SUDO_USER=root.
 
+if [ 0 != $(id -u) ] || [ -z "$SUDO_USER" ]
+then
+    echo -e "\n${0##*/} only runs as sudo root.\n"
+    exit 1
+fi
+
 iptbls-open-hole -a o -s -d o -p t -n 22
 
