@@ -13,24 +13,31 @@ fi
 
 if [ -z "$1" ] || [ -z "$2" ]
 then
-    echo -e "\nUsage: $ ${0##*/} {remote-ssh-host-nickame} {gui app to start}"
+    echo -e "\nUsage: $ ${0##*/} {remote-ssh-host-nickame}" \
+                                "{gui app to start} [app's args]"
     exit 1
 fi
 
 # TODO: Add SSH agent SOCK check here. If none, create one: ssh-agent -s
 
-simple=$( echo "${2##*/}" | sed -r "s/ .*//" )
-out="$HOME"/.x-$1-$simple.out
+remote=$1
+shift 1
+simple=$( echo "${1##*/}" | sed -r "s/ .*//" )
+out="$HOME"/.x-$remote-$simple.out
 
-ssh $1 -- exit  # Provides an SSH private key password prompt that does not
-                # echo clear-text password chars, which the nohup below does.
-                # This assumes an ssh-agent is running that will capture the
-                # password and thus avoid another (and clear-text echoing)
-                # password prompt when calling the actual command just below.
-                # Works best if AddKeysToAgent is 'yes' in /etc/ssh_config.
+ssh $remote -- exit  # Provides an SSH private key password prompt that does
+                     # not echo clear-text password chars, which the nohup
+                     # below does. This assumes an ssh-agent is running that
+                     # will capture the password and thus avoid another (and
+                     # clear-text echoing) password prompt when calling the
+                     # actual command just below. Works best if AddKeysToAgent
+                     # is 'yes' in /etc/ssh_config (or in remote host's entry
+                     # in ~/.ssh/config).
+[ 0 != "$?" ] && exit 1
+
 echo
-echo "$ nohup ssh -v $conType $1 -- $2 &>\"$out\" &"
-nohup ssh -v $conType $1 -- $2 &>"$out" &
+echo "$ nohup ssh -v $conType $remote -- $@ &>\"$out\" &"
+nohup ssh -v $conType $remote -- $@ &>"$out" &
 
 touch "$out"
 chmod go-rwx "$out"
