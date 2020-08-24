@@ -4,6 +4,12 @@
 # Assumes user's local host .ssh/config contains an entry for the remote
 # host that defines a nickname.
 
+# For remote apps that need space-containing args,
+# backslash escape single and double-quotes once:
+#
+#   $ remote-gui-start {remote host} {remote-app} \"arg 1\" \'arg 2\' arg3...
+#
+
 conType=-X
 if [ '-Y' = "$1" ]
 then
