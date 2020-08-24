@@ -18,26 +18,16 @@ then
     exit 1
 fi
 
-# TODO: Add SSH agent SOCK check here. If none, create one: ssh-agent -s
-
 remote=$1
 shift 1
 simple=$( echo "${1##*/}" | sed -r "s/ .*//" )
 out="$HOME"/.x-$remote-$simple.out
 
-ssh $remote -- exit  # Provides an SSH private key password prompt that does
-                     # not echo clear-text password chars, which the nohup
-                     # below does. This assumes an ssh-agent is running that
-                     # will capture the password and thus avoid another (and
-                     # clear-text echoing) password prompt when calling the
-                     # actual command just below. Works best if AddKeysToAgent
-                     # is 'yes' in /etc/ssh_config (or in remote host's entry
-                     # in ~/.ssh/config).
-[ 0 != "$?" ] && exit 1
-
+# -f tells ssh to move into background after prompting for password, which
+# enables hidden password echo, whereas & causes clear-text password echo.
 echo
-echo "$ nohup ssh -v $conType $remote -- $@ &>\"$out\" &"
-nohup ssh -v $conType $remote -- $@ &>"$out" &
+echo "$ ssh -vf $conType $remote -- $@ &>\"$out\""
+ssh -vf $conType $remote -- $@ &>"$out"
 
 touch "$out"
 chmod go-rwx "$out"
