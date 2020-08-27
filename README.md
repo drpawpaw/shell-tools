@@ -9,10 +9,14 @@ Misc. shell utilities.
 **backup-timestamp**: Makes a backup copy of a file with a name suffixed with
                       the current time.
 
-**cp-admin-to-remote-hosts**: Copies a file not owned by you to the same file
-                              path location on one or more remote hosts,
-                              retaining the same owner, group, timestamps and
-                              rwx props on the remote hosts.
+**cp-admin-to-ssh-hosts**: Copies a file not owned by you to the same file path
+                           location on one or more remote hosts, retaining the
+                           same owner, group, timestamps and rwx props on the
+                           remote hosts.
+
+**cp-to-ssh-hosts**: Copies a file owned by you to the same file path location
+                     on one or more remote hosts, retaining its timestamps and
+                     rwx props on the remote hosts.
 
 **eclipse-ide-prefs-backup**: Backs up all Eclipse IDE workspace preferences
                               for reuse in other workspaces or Eclipse
@@ -34,8 +38,9 @@ Misc. shell utilities.
 **ip-geolocate**: Prints the city (region) and country in which its IP address
                   arg is located.
 
-**iptbls-open-hole**: Opens a hole in the local iptables firewall, for network
-                      communications that originate on the host xor remotely.
+**iptbls-open-hole**: Opens a temporary hole in the local iptables firewall,
+                      for network communications that originate on the host
+                      xor remotely.
 
 **iptbls-ssh-out-shell**: SSH-specific wrapper around iptbls-open-port.
 

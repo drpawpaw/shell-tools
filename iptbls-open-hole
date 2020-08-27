@@ -16,10 +16,10 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-# Opens a port in the local iptables firewall, either for outbound or inbound
-# packets. If the direction (-d) is outbound it also restricts the outbound
-# traffic to only packets sent by processes owned by the SUDO_USER caller of
-# this script.
+# Opens a temporary hole in the local iptables firewall, either for outbound
+# or inbound packets. If the direction (-d) is outbound it also restricts the
+# outbound traffic to only packets sent by processes owned by the SUDO_USER
+# caller of this script.
 
 # Optionally takes a remote host param (-h) to restrict the destination or
 # source of packets through the opened port.
