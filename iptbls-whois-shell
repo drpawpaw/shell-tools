@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Opens the whois IP port for outbound packets from processes owned by a temp
+# user, and opens a shell under that temp user in which to use 'whois'.
+
+# See top of script iptbls-open-hole for more usage info on this script.
+
 # Copyright (C) 2020 drpawpaw. All Rights Reserved.
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -15,22 +20,35 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
-# See top of script iptbls-open-hole for usage info of this script.
-
-# TODO: Add optional SSH server host/IP argument.
-
-# TODO: Add optional setting of ssh server's port.
-
-# Do NOT launch iptbls-open-hole as sudo, because if done AND this script is
-# also launched as sudo, then SUDO_USER within iptbls-open-hole is root!
-# It's unlikely anyone would ever want SUDO_USER=root.
-
 if [ 0 != $(id -u) ] || [ -z "$SUDO_USER" ]
 then
     echo -e "\n${0##*/} only runs as sudo root.\n"
     exit 1
 fi
 
-iptbls-open-hole -a o -s -d o -p t -n 22
+for e in id iptbls-open-hole tmp-user
+do
+    if ! which $e &>/dev/null
+    then
+        echo -e "\n${0##*/} needs ${e}. Didn't find it.\n"
+        exit 1
+    fi
+done
+
+declare -r user=$( tmp-user -c )
+if ! id -u "$user" &>/dev/null
+then
+    echo -e "\nFailed to create a tmp user."
+    exit 1
+fi
+                         #  1      2       3      4       6      8      15
+trap "tmp-user -d $user" SIGHUP SIGINT SIGQUIT SIGILL SIGABRT SIGFPE SIGTERM
+
+# Do NOT launch iptbls-open-hole as sudo, because if done AND this script is
+# also launched as sudo, then SUDO_USER within iptbls-open-hole is root!
+# It's unlikely anyone would ever want SUDO_USER=root.
+
+iptbls-open-hole -a o -s -d o -p t -n 43 -u $user
+
+tmp-user -d $user
 

@@ -44,6 +44,10 @@ Misc. shell utilities.
 
 **iptbls-ssh-out-shell**: SSH-specific wrapper around iptbls-open-port.
 
+**iptbls-whois-shell**: Opens the whois IP port for outbound packets from
+                        processes owned by a temp user, and opens a shell
+                        under that temp user in which to use 'whois'.
+
 **is-dns-available**: Returns 0 if an upstream DNS server is available,
                       non-zero if not.
 

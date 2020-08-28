@@ -1,25 +1,10 @@
 #!/bin/bash
 
-# Copyright (C) 2020 drpawpaw. All Rights Reserved.
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 
 # Opens a temporary hole in the local iptables firewall, either for outbound
 # or inbound packets. If the direction (-d) is outbound it also restricts the
 # outbound traffic to only packets sent by processes owned by the SUDO_USER
-# caller of this script.
+# caller of this script, xor by those of a username passed in (-u).
 
 # Optionally takes a remote host param (-h) to restrict the destination or
 # source of packets through the opened port.
@@ -43,6 +28,22 @@
 # that are jumped to for logging and accepting an allowed in or out packet.
 
 
+# Copyright (C) 2020 drpawpaw. All Rights Reserved.
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
 if [ 0 != $(id -u) ] || [ -z "$SUDO_USER" ]
 then
     echo -e "\n${0##*/} only runs as sudo root.\n"
@@ -59,8 +60,8 @@ fi
 
 function printUsageAndExit
 {
-    echo -e "\nUsage: $ ${0##*/} -a {o|c} [-s]" \
-                       "-d {o|i} -p {u|t|i} -i {port #} [-h {host}]" >&2
+    echo -e "\nUsage: $ ${0##*/} -a {o|c} -d {o|i} -p {u|t|i} -i {port #} " \
+                               "[-s] [-u {username}] [-h {host}]" >&2
     echo -e "\nInbound ICMP (-p i) requires a specific host (-h {host})." >&2
     echo "Ports (-n {port #} make no sense with ICMP protocol (-p i)." >&2
     echo -e "\nSee script's while getopts loop for arg defs." >&2
@@ -79,9 +80,10 @@ done
 
 
 startBash=false
+user=$SUDO_USER
 port=""
 
-while getopts ":a:sd:p:n:h:" arg
+while getopts ":a:sd:p:n:h:u:" arg
 do
     case $arg in
 
@@ -98,6 +100,9 @@ do
 
         h  ) declare -r host="$OPTARG" ;;       # Open to just one remote host?
 
+        u ) user="$OPTARG" ;;   # Only packets from processes owned by user are
+                                # allowed to pass through outbound opened hole.
+
         \? ) printUsageAndExit
              exit 1 ;;
     esac
@@ -110,8 +115,9 @@ done
 [ t != "$proto" ] && [ u != "$proto" ] && \
                      [ i != "$proto" ] &&  printUsageAndExit
 
-[ i != "$proto" ] && (( 1 > port )) || (( 65535 < port )) && \
-                                                            printUsageAndExit
+[ i != "$proto" ] && (( 1 > port )) || (( 65535 < port )) && printUsageAndExit
+
+! id -u $user &>/dev/null && printUsageAndExit
 
 
 if [ t = "$proto" ]
@@ -151,13 +157,13 @@ function closePort
 
         set -o xtrace
         iptables -D OUTPUT   -p $proto $dest $dport -j OUT_LOG \
-                             -m owner --uid-owner $( id -u $SUDO_USER ) \
-                             -m comment --comment "$SUDO_USER $proto tmp hole"
+                             -m owner --uid-owner $( id -u $user ) \
+                             -m comment --comment "$user $proto tmp hole"
 
         iptables -D OUTPUT   -p $proto $dest $dport -j ACCEPT \
                              -m state --state ESTABLISHED,RELATED \
-                             -m owner --uid-owner $( id -u $SUDO_USER ) \
-                             -m comment --comment "$SUDO_USER $proto tmp hole"
+                             -m owner --uid-owner $( id -u $user ) \
+                             -m comment --comment "$user $proto tmp hole"
         set +o xtrace
 
         src=""
@@ -166,7 +172,7 @@ function closePort
         set -o xtrace
         iptables -D INPUT   -p $proto $src $sport -j ACCEPT \
                             -m state --state ESTABLISHED,RELATED \
-                            -m comment --comment "$SUDO_USER $proto tmp hole"
+                            -m comment --comment "$user $proto tmp hole"
         set +o xtrace
 
     elif [ i = "$direction" ]
@@ -177,11 +183,11 @@ function closePort
 
         set -o xtrace
         iptables -D INPUT   -p $proto $src $dport -j $inLogChain \
-                            -m comment --comment "$SUDO_USER $proto tmp hole"
+                            -m comment --comment "$user $proto tmp hole"
 
         iptables -D INPUT   -p $proto $src $dport -j ACCEPT \
                             -m state --state ESTABLISHED,RELATED \
-                            -m comment --comment "$SUDO_USER $proto tmp hole"
+                            -m comment --comment "$user $proto tmp hole"
         set +o xtrace
 
         dest=""
@@ -190,7 +196,7 @@ function closePort
         set -o xtrace
         iptables -D OUTPUT   -p $proto $sport $dest -j ACCEPT \
                              -m state --state ESTABLISHED,RELATED \
-                             -m comment --comment "$SUDO_USER $proto tmp hole"
+                             -m comment --comment "$user $proto tmp hole"
         set +o xtrace
 
     else
@@ -198,6 +204,9 @@ function closePort
         exit 1
     fi
 }
+
+              #  1      2       3      4       6      8      15
+trap closePort SIGHUP SIGINT SIGQUIT SIGILL SIGABRT SIGFPE SIGTERM
 
 
 function openPort
@@ -217,15 +226,16 @@ function openPort
         local dest=""
         [ -n "$host" ] && dest="-d $host"
 
+        echo
         set -o xtrace
         iptables -I OUTPUT 1 -p $proto $dest $dport -j OUT_LOG \
-                             -m owner --uid-owner $( id -u $SUDO_USER ) \
-                             -m comment --comment "$SUDO_USER $proto tmp hole"
+                             -m owner --uid-owner $( id -u $user ) \
+                             -m comment --comment "$user $proto tmp hole"
 
         iptables -I OUTPUT 1 -p $proto $dest $dport -j ACCEPT \
                              -m state --state ESTABLISHED,RELATED \
-                             -m owner --uid-owner $( id -u $SUDO_USER ) \
-                             -m comment --comment "$SUDO_USER $proto tmp hole"
+                             -m owner --uid-owner $( id -u $user ) \
+                             -m comment --comment "$user $proto tmp hole"
         set +o xtrace
 
         src=""
@@ -234,7 +244,7 @@ function openPort
         set -o xtrace
         iptables -I INPUT 1 -p $proto $src $sport -j ACCEPT \
                             -m state --state ESTABLISHED,RELATED \
-                            -m comment --comment "$SUDO_USER $proto tmp hole"
+                            -m comment --comment "$user $proto tmp hole"
         set +o xtrace
 
     elif [ i = "$direction" ]
@@ -245,11 +255,11 @@ function openPort
 
         set -o xtrace
         iptables -I INPUT 1 -p $proto $src $dport -j $inLogChain \
-                            -m comment --comment "$SUDO_USER $proto tmp hole"
+                            -m comment --comment "$user $proto tmp hole"
 
         iptables -I INPUT 1 -p $proto $src $dport -j ACCEPT \
                             -m state --state ESTABLISHED,RELATED \
-                            -m comment --comment "$SUDO_USER $proto tmp hole"
+                            -m comment --comment "$user $proto tmp hole"
         set +o xtrace
 
         dest=""
@@ -258,7 +268,7 @@ function openPort
         set -o xtrace
         iptables -I OUTPUT 1 -p $proto $dest $sport -j ACCEPT \
                              -m state --state ESTABLISHED,RELATED \
-                             -m comment --comment "$SUDO_USER $proto tmp hole"
+                             -m comment --comment "$user $proto tmp hole"
         set +o xtrace
 
     else
@@ -276,16 +286,16 @@ then
 
     if $startBash
     then
-        TF=$( sudo -u $SUDO_USER mktemp )
-        echo ". ~/.bashrc" > "$TF"
-        echo "PS1='\n$SUDO_USER ${0##*/} \$( pwd )\n$proto:$port> '" >> "$TF"
-        echo "echo -e '\033]2;'$proto:$port ${0##*/}'\007'"          >> "$TF"
-        echo "cd $PWD"                                               >> "$TF"
-        echo "env | grep SSH"                                        >> "$TF"
-echo "SUDO_USER: $SUDO_USER"
-        sudo --login -u $SUDO_USER ssh-agent bash --rcfile "$TF"
+        userHome=$( cat /etc/passwd | grep -E "^$user:" | cut -d : -f6 )
+        TF=$( sudo -u $user mktemp )
+        echo ". $userHome/.bashrc"                               > "$TF"
+        echo "PS1='\n$user ${0##*/} \$( pwd )\n$proto:$port> '" >> "$TF"
+        echo "echo -e '\033]2;'$proto:$port ${0##*/}'\007'"     >> "$TF"
+
+        sudo --login -u $user bash --rcfile "$TF"
+
         rm -f "$TF"
-        echo -e "\nClosing $proto:${port}."
+        echo -e "\nClosing $proto:${port}"
         closePort
     fi
 
