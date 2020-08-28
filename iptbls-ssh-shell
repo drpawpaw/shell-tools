@@ -32,5 +32,22 @@ then
     exit 1
 fi
 
-iptbls-open-hole -a o -s -d o -p t -n 22
+userHome=$( cat /etc/passwd | grep -E "^$SUDO_USER:" | cut -d : -f6 )
+TF=$( sudo -u $SUDO_USER mktemp )
+echo ". $userHome/.bashrc"                              > "$TF"
+echo "PS1='\n$SUDO_USER ${0##*/} \$( pwd )\nssh:22> '" >> "$TF"
+echo "echo -e '\033]2;'ssh:22 ${0##*/}'\007'"          >> "$TF"
+echo "cd $PWD"                                         >> "$TF"
+echo "env | grep SSH"                                  >> "$TF"
+
+
+iptbls-open-hole -a o -d o -p t -n 22
+trap "iptbls-open-hole -a c -d o -p t -n 22" \
+                          SIGHUP SIGINT SIGQUIT SIGILL SIGABRT SIGFPE SIGTERM
+                         #  1      2       3      4       6      8      15
+
+sudo --login -u $SUDO_USER ssh-agent bash --rcfile "$TF"
+
+rm -f "$TF"
+iptbls-open-hole -a c -d o -p t -n 22
 

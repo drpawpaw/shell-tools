@@ -42,7 +42,7 @@ Misc. shell utilities.
                       for network communications that originate on the host
                       xor remotely.
 
-**iptbls-ssh-out-shell**: SSH-specific wrapper around iptbls-open-port.
+**iptbls-ssh-shell**: SSH-specific wrapper around iptbls-open-hole.
 
 **iptbls-whois-shell**: Opens the whois IP port for outbound packets from
                         processes owned by a temp user, and opens a shell
