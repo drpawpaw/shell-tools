@@ -16,14 +16,14 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-# See top of script iptbls-open-hole for usage info of this script.
+# See top of script iptbls-hole for usage info of this script.
 
 # TODO: Add optional SSH server host/IP argument.
 
 # TODO: Add optional setting of ssh server's port.
 
-# Do NOT launch iptbls-open-hole as sudo, because if done AND this script is
-# also launched as sudo, then SUDO_USER within iptbls-open-hole is root!
+# Do NOT launch iptbls-hole as sudo, because if done AND this script is
+# also launched as sudo, then SUDO_USER within iptbls-hole is root!
 # It's unlikely anyone would ever want SUDO_USER=root.
 
 if [ 0 != $(id -u) ] || [ -z "$SUDO_USER" ]
@@ -41,13 +41,13 @@ echo "cd $PWD"                                         >> "$TF"
 echo "env | grep SSH"                                  >> "$TF"
 
 
-iptbls-open-hole -a o -d o -p t -n 22
-trap "iptbls-open-hole -a c -d o -p t -n 22" \
+iptbls-hole -a o -d o -p t -n 22
+trap "iptbls-hole -a c -d o -p t -n 22" \
                           SIGHUP SIGINT SIGQUIT SIGILL SIGABRT SIGFPE SIGTERM
                          #  1      2       3      4       6      8      15
 
 sudo --login -u $SUDO_USER ssh-agent bash --rcfile "$TF"
 
 rm -f "$TF"
-iptbls-open-hole -a c -d o -p t -n 22
+iptbls-hole -a c -d o -p t -n 22
 

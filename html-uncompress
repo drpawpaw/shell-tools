@@ -1,5 +1,18 @@
 #!/bin/bash
 
+# Uncompresses stdin onto stdout when stdin's compression type is unknown,
+# including not compressed streams.
+
+# $ echo "Ipsum foobar dino Barney!" | gzip | html-uncompress | brotli | \
+# html-uncompress | html-uncompress
+# Ipsum foobar dino Barney!
+#
+# It's not HTML dedicated, but that's what it'll likely be used for most, so
+# it's named to be most easily remembered.
+#
+# It's not coded for extremely large inputs.
+
+
 # Copyright (C) 2020 drpawpaw. All Rights Reserved.
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -14,18 +27,6 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
-# Decompresses an input stream when the stream's compression type is unknown.
-#
-# $ echo "Ipsum foobar dino Barney!" | gzip | html-uncompress | brotli | \
-# html-uncompress | html-uncompress
-# Ipsum foobar dino Barney!
-#
-# It's not HTML dedicated, but that's what it'll likely be used for most, so
-# it's named to be most easily remembered.
-#
-# It's not coded for extremely large inputs.
 
 
 for e in base64 brotli gunzip head

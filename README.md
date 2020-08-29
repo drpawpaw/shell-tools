@@ -26,7 +26,7 @@ Misc. shell utilities.
                           stdout a line containg the simple names of the passed
                           in script's runtime executable dependenices.
 
-**html-uncompress**: Uncompresses its input stream when the stream's
+**html-uncompress**: Uncompresses stdin onto stdout when the stdin's
                      compression type is unknown, including not compressed
                      streams.
 
@@ -38,11 +38,10 @@ Misc. shell utilities.
 **ip-geolocate**: Prints the city (region) and country in which its IP address
                   arg is located.
 
-**iptbls-open-hole**: Opens a temporary hole in the local iptables firewall,
-                      for network communications that originate on the host
-                      xor remotely.
+**iptbls-hole**: Opens a temporary hole in the local iptables firewall, for
+                 net communications that originate on the host xor remotely.
 
-**iptbls-ssh-shell**: SSH-specific wrapper around iptbls-open-hole.
+**iptbls-ssh-shell**: SSH-specific wrapper around iptbls-hole.
 
 **iptbls-whois-shell**: Opens the whois IP port for outbound packets from
                         processes owned by a temp user, and opens a shell
@@ -86,7 +85,7 @@ Misc. shell utilities.
 **tmp-user-run**: Runs a passed in command line under a randomly named temp
                   user. Deletes the user after the passed in command exits.
 
-**tinyp**: World's tiniest project management application?
+**tinyp**: Earth's tiniest project management application?
 
 **z-old-logs-dev-null**: Reduces to size zero all log files last modified over
                          N days ago.

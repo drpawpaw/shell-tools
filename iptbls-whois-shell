@@ -3,7 +3,7 @@
 # Opens the whois IP port for outbound packets from processes owned by a temp
 # user, and opens a shell under that temp user in which to use 'whois'.
 
-# See top of script iptbls-open-hole for more usage info on this script.
+# See top of script iptbls-hole for more usage info on this script.
 
 # Copyright (C) 2020 drpawpaw. All Rights Reserved.
 #
@@ -26,7 +26,7 @@ then
     exit 1
 fi
 
-for e in id iptbls-open-hole tmp-user
+for e in id iptbls-hole tmp-user
 do
     if ! which $e &>/dev/null
     then
@@ -44,11 +44,11 @@ fi
                          #  1      2       3      4       6      8      15
 trap "tmp-user -d $user" SIGHUP SIGINT SIGQUIT SIGILL SIGABRT SIGFPE SIGTERM
 
-# Do NOT launch iptbls-open-hole as sudo, because if done AND this script is
-# also launched as sudo, then SUDO_USER within iptbls-open-hole is root!
+# Do NOT launch iptbls-hole as sudo, because if done AND this script is
+# also launched as sudo, then SUDO_USER within iptbls-hole is root!
 # It's unlikely anyone would ever want SUDO_USER=root.
 
-iptbls-open-hole -a o -s -d o -p t -n 43 -u $user
+iptbls-hole -a o -s -d o -p t -n 43 -u $user
 
 tmp-user -d $user
 
